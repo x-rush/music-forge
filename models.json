@@ -75,28 +75,6 @@
         }
       }
     },
-    "suno-v45": {
-      "vendor": "Suno",
-      "model": "chirp-v4-5-plus",
-      "best_for": "降级备胎：文风更稳、偶尔比 v6 便宜；vocal_gender 自 4.5 起支持",
-      "availability": {
-        "acedata": {
-          "endpoint": "suno/audios",
-          "model_id": "chirp-v4-5-plus",
-          "params": {
-            "lyric_max_chars": 5000,
-            "title_max_chars": 100,
-            "style_max_chars": 1000,
-            "instrumental": "bool",
-            "negative_tags": "string",
-            "vocal_gender": ["f", "m"],
-            "duration_seconds": [10, 360]
-          },
-          "price_credits": { "generate": 0.56, "generate_max_mode": 1.12 },
-          "notes": "旧模型枚举（v4/v3.5）歌词上限 3000、style 上限 200，注册表不单列"
-        }
-      }
-    },
     "mureka-v95": {
       "vendor": "Mureka",
       "model": "V9.5",

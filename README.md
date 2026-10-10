@@ -8,7 +8,7 @@ configuration, not code**. Zero dependencies beyond Node >= 18.
 
 | Channel | Models | Auth | Billing | Status |
 |---|---|---|---|---|
-| AceDataCloud (Suno relay) | `suno-v6`, `suno-v6-mini`, `suno-v45` | `ACEDATA_SUNO_API_KEY` | platform credits (~0.56/generate) | docs-verified, smoke pending |
+| AceDataCloud (Suno relay) | `suno-v6`, `suno-v6-mini` | `ACEDATA_SUNO_API_KEY` | platform credits (~0.56/generate) | docs-verified, smoke pending |
 | useapi.net (own Mureka plan) | `mureka-v95`, `mureka-o2` | `USEAPI_TOKEN` | your Mureka plan quota (Pro $9/mo ≈ 500 songs) | docs-verified, smoke pending |
 
 > Both channels are **third-party relays**, not official vendor APIs: AceDataCloud

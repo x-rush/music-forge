@@ -26,6 +26,8 @@
 | `variety` | off / normal / high / extra / max |
 | `max_mode` | 增强档（需 custom=true），计费 1.12 credits |
 
+> 渠道全枚举如上（旧模型 v4.5/v4/v3.5 的歌词/style 上限更低）。**注册表（models.json）只单列 `chirp-v6`（suno-v6）与 `chirp-v6-mini`（suno-v6-mini）**，2026-10-10 用户决定不收 suno-v45；要用旧枚举往 models.json 加一行即可。计费按 action 与模型无关：generate 0.56 / max_mode 1.12 credits。
+
 ### 响应
 ```json
 { "success": true, "task_id": "…", "data": [{ "id", "title", "image_url",
@@ -38,6 +40,9 @@
 - 计费：generate ≈0.56 credits（普通）/ 1.12（max_mode）；`cost.amount` 为折后实扣
 
 ## useapi.net · Mureka（自有订阅） [docs]
+
+> ⚠️ 渠道归属：Mureka 只走本渠道（useapi.net），与 AceDataCloud（仅 Suno）完全隔离。
+> 按 2026-10-10 决定处于休眠：代码/文档在，未订阅前不会被调用。
 
 - Base：`https://api.useapi.net/v1/mureka`
 - 鉴权：`Authorization: Bearer user:<id>-<串>`（完整 token，勿截断/URL 编码）
