@@ -23,7 +23,7 @@ When triggered, the system provides a Base directory (referenced as `<skill>` be
 - `<skill>/scripts/budget.mjs` — spend report + dual-channel monthly budget control
 - `<skill>/providers/` — channel implementations (acedata = sync REST; useapi = submit + poll)
 - `<skill>/models.json` — model registry: aliases, endpoints, parameter enums, prices
-- `<skill>/reference/` — endpoint contracts and lessons
+- `<skill>/reference/` — endpoint contracts, prompting guide and lessons
 
 ## Quick Start
 
@@ -53,7 +53,7 @@ Every successful generation appends to `scripts/gen-log.jsonl` (global ledger).
 1. **Budget check**: `budget.mjs --check` before the first generation of a session.
 2. **Confirm intent** (skip if user already stated all four): ① 有词歌还是纯音乐 ② 语言与曲风 ③ 时长 ④ 用途（BGM 循环 / 主题曲成品）。Suno 同步要等 1–2 分钟、Mureka 约 45 秒——先告知用户再提交。
 3. **Model selection**: 人声成品、中英歌词 → `suno-v6`；控成本走自有订阅 → `mureka-v95`；纯音乐 BGM → `--instrumental`（Suno 或 Mureka 均可）。
-4. **Lyrics discipline**: 歌词用 `--lyrics-file` 传入（免 shell 转义），结构标签写全（`[Verse]`/`[Chorus]`/`[Bridge]`），中文注意音节与断句；`--style` 只放风格标签不放整句。
+4. **Lyrics discipline**: follow `reference/prompting.md` — style 标签体系、结构标签、参数调优手册（weirdness / style_influence / variety / max_mode 已 CLI 化）。歌词用 `--lyrics-file` 传入（免 shell 转义），结构标签写全（`[Verse]`/`[Chorus]`/`[Bridge]`），中文注意音节与断句；`--style` 只放风格标签不放整句。
 5. **Generate once → validate（文件大小 + ffprobe 时长）→ 交付，让用户试听再迭代。** 每次迭代 = 一次提交 + 一次试听反馈，不要连环重生成。
 
 ## Critical Rules

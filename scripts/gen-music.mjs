@@ -45,6 +45,10 @@ if (process.argv.includes("--help") || !process.argv[2]) {
   --voice <f|m>       人声性别（Suno 4.5+）
   --duration <sec>    期望时长 10-360（倾向值非硬上限）
   --negative-tags     反向风格标签（Suno）
+  --weirdness 0-1     实验度（BGM 0.2-0.4 / 主流 0.4-0.6 / 先锋 0.7+）
+  --style-influence 0-1  style 标签遵循度（要贴标签 0.6+）
+  --variety <档>      候选多样性 off|normal|high|extra|max
+  --max-mode          增强档：更长更完整，1.12 credits（普通 0.56）
   --advanced-json <p> 原样合并进请求体的 JSON 文件（长尾参数逃生口）
   --out <dir>         输出目录（默认 ./music-output/<时间戳>-<别名>/）
   --report            查看账本报表`);
@@ -109,6 +113,10 @@ function buildParams() {
     if (voice) p.vocal_gender = voice;
     if (duration) p.duration = Math.min(360, Math.max(10, Math.round(duration)));
     if (negativeTags) p.negative_tags = negativeTags;
+    if (arg("weirdness")) p.weirdness = Math.min(1, Math.max(0, Number(arg("weirdness"))));
+    if (arg("style-influence")) p.style_influence = Math.min(1, Math.max(0, Number(arg("style-influence"))));
+    if (arg("variety")) p.variety = arg("variety");
+    if (hasFlag("max-mode")) p.max_mode = true;
   } else if (providerName === "useapi") {
     if (prompt) p.prompt = style ? `${prompt}；风格：${style}` : prompt;
     if (lyrics) p.lyrics = lyrics;
