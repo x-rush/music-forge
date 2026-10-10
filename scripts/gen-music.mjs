@@ -204,6 +204,9 @@ try {
 
   console.log(`\n✅ ${files.length} 首已就绪（${entry.seconds}s）→ ${outDir}`);
   console.log(`📒 记账：${providerName}/${alias}${entry.cost_credits ? ` · 实扣 ${entry.cost_credits} credits` : entry.est_credits ? ` · 估扣 ${entry.est_credits} credits（响应未带实扣）` : ""}${entry.est_usd ? ` · 估算 $${entry.est_usd.toFixed(3)}` : ""} · 报表：node ${join(HERE, "budget.mjs")}`);
+  if (!instrumental && !lyrics && providerName === "acedata") {
+    console.log(`💡 灵感模式：Suno 自动写词在 ${join(outDir, "meta.json")}（tracks[].lyrics）——想改词就改完走 custom 模式（--lyrics-file）重跑`);
+  }
 } catch (e) {
   const msg = String(e?.message ?? e);
   die(/HTTP 401\b/.test(msg)

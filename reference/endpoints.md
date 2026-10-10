@@ -70,5 +70,6 @@
 ## 冒烟测试清单
 1. ✅ [live 2026-10-10] acedata `--model suno-v6 --prompt "轻快测试曲" --instrumental` → 2 首《纸飞机起飞》92s/122s，76s 同步返回，账本落行（est_credits 兜底）
 1b. ✅ [live 2026-10-10] acedata `--model suno-v6-mini` 同参 → 2 首 156s/137s，72s 返回；API 面与 v6 无差异，质量对比待人工试听
+1c. ✅ [live 2026-10-10] custom 模式（用户给词）：`--lyrics-file --title --style` → 2 首《开往春天的慢车》116s/110s；返回词保留全部关键句与结构标签（custom=true 路径验证）；歌词三路工作流见 SKILL.md Workflow #4
 2. useapi（休眠）：`--model mureka-v95 --prompt <短描述>` → 期望 jobid→completed→2 首下载（订阅开通后）
 3. ✅ [live 2026-10-10] 异常路：错 key 401 invalid_token / 余额 403 used_up 文案均干净（❌ + exit 2）；`--resume` 待 useapi 实测
