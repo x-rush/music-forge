@@ -2,5 +2,6 @@ scripts/gen-log.jsonl
 scripts/budget.json
 samples/
 music-output/
+stem-output/
 providers/token.txt
 providers/useapi-token.txt

@@ -23,6 +23,7 @@ When triggered, the system provides a Base directory (referenced as `<skill>` be
 - `<skill>/scripts/budget.mjs` — spend report + dual-channel monthly budget control
 - `<skill>/providers/` — channel implementations (acedata = sync REST; useapi = submit + poll)
 - `<skill>/models.json` — model registry: aliases, endpoints, parameter enums, prices
+- `<skill>/scripts/stems.mjs` — 音轨分离（extract_stem：有词歌 → 人声轨 + 纯伴奏 BGM，1.12 credits）
 - `<skill>/reference/` — endpoint contracts, prompting guide and lessons
 
 ## Quick Start

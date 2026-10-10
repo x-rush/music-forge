@@ -44,6 +44,7 @@ export async function generate({ model, endpoint, params, apiKey, onLog = () => 
   const tracks = j.data
     .filter((t) => t.audio_url)
     .map((t) => ({
+      id: t.id,
       title: t.title || 'untitled',
       audio_url: t.audio_url,
       cover_url: t.image_url,

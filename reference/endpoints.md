@@ -28,6 +28,13 @@
 
 > 渠道全枚举如上（旧模型 v4.5/v4/v3.5 的歌词/style 上限更低）。**注册表（models.json）只单列 `chirp-v6`（suno-v6）与 `chirp-v6-mini`（suno-v6-mini）**，2026-10-10 用户决定不收 suno-v45；要用旧枚举往 models.json 加一行即可。计费按 action 与模型无关：generate 0.56 / max_mode 1.12 credits。
 
+### action 全目录（2026-10-10 文档核对，v1 只接 generate + extract_stem）
+
+generate · extend · upload_extend · cover · upload_cover · concat · replace_section · **stems**（人声+伴奏二分）· **all_stems**（多轨全分）· **add_stem**（1.344/0.672）· **extract_stem**（1.12，[live] 已接）· sounds（0.112）· adjust_speed（0.28）· underpainting / overpainting（上传清唱/伴奏加轨）· remaster（v4.5+/v5）· mashup · samples · inspo · artist_consistency(_vox)
+
+- `extract_stem` 契约 [live]：`{ action, audio_id, stem_type, audio_format:"mp3" }` → `data[]` 为 2 组候选 ×（隔离轨+互补轨），互补轨命名 `(Instrumental)`；`cost.amount` 实测也未返回（est 1.12 兜底）；audio_id 来源 = generate 响应 `data[].id`（provider 已透传至 meta.json tracks[].id）
+- 其余 action 未接入：按 stems.mjs 的模式复制即可（同端点同鉴权，改 action 与参数）
+
 ### 响应
 ```json
 { "success": true, "task_id": "…", "data": [{ "id", "title", "image_url",
@@ -71,5 +78,6 @@
 1. ✅ [live 2026-10-10] acedata `--model suno-v6 --prompt "轻快测试曲" --instrumental` → 2 首《纸飞机起飞》92s/122s，76s 同步返回，账本落行（est_credits 兜底）
 1b. ✅ [live 2026-10-10] acedata `--model suno-v6-mini` 同参 → 2 首 156s/137s，72s 返回；API 面与 v6 无差异，质量对比待人工试听
 1c. ✅ [live 2026-10-10] custom 模式（用户给词）：`--lyrics-file --title --style` → 2 首《开往春天的慢车》116s/110s；返回词保留全部关键句与结构标签（custom=true 路径验证）；歌词三路工作流见 SKILL.md Workflow #4
+1d. ✅ [live 2026-10-10] extract_stem 分离：`stems.mjs --from meta.json --type vocals` → 2 组候选 ×(Vocals)+(Instrumental) 各 123s 与源一致；有词歌→纯伴奏 BGM 通路打通
 2. useapi（休眠）：`--model mureka-v95 --prompt <短描述>` → 期望 jobid→completed→2 首下载（订阅开通后）
 3. ✅ [live 2026-10-10] 异常路：错 key 401 invalid_token / 余额 403 used_up 文案均干净（❌ + exit 2）；`--resume` 待 useapi 实测
