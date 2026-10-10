@@ -5,7 +5,7 @@
   "providers": {
     "acedata": {
       "description": "AceDataCloud Suno 兼容中转（同步 REST：提交后连接保持约 1-2 分钟，直接返回成品曲目）",
-      "auth_env": "ACEDATA_API_KEY",
+      "auth_env": ["ACEDATA_SUNO_API_KEY", "ACEDATA_API_KEY"],
       "auth_file": "providers/token.txt",
       "base_url": "https://api.acedata.cloud",
       "docs": "https://docs.acedata.cloud/zh-Hans/guides/suno/suno_audios",

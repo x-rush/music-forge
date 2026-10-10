@@ -1,6 +1,6 @@
 ---
 name: music-forge
-description: Multi-channel AI music generation engine (Suno via AceDataCloud + Mureka via useapi.net) — full songs with vocals, instrumental BGM, custom lyrics, zh/en lyric rendering. Use whenever the user asks to generate or write music, a song, background music, BGM, theme/ending music, jingle, or mentions 音乐, 配乐, 背景音乐, 写歌, 生成歌曲, 主题曲, 片尾曲, 歌词, 伴奏, 纯音乐, suno, mureka — even without saying "generate". Requires ACEDATA_API_KEY (platform.acedata.cloud) or USEAPI_TOKEN (useapi.net, drives your own Mureka plan); zero dependencies beyond Node >= 18 (ffprobe optional for duration checks). Model routing, endpoints, parameter enums and pricing live in one JSON registry — adding a model is configuration, not code.
+description: Multi-channel AI music generation engine (Suno via AceDataCloud + Mureka via useapi.net) — full songs with vocals, instrumental BGM, custom lyrics, zh/en lyric rendering. Use whenever the user asks to generate or write music, a song, background music, BGM, theme/ending music, jingle, or mentions 音乐, 配乐, 背景音乐, 写歌, 生成歌曲, 主题曲, 片尾曲, 歌词, 伴奏, 纯音乐, suno, mureka — even without saying "generate". Requires ACEDATA_SUNO_API_KEY (platform.acedata.cloud) or USEAPI_TOKEN (useapi.net, drives your own Mureka plan); zero dependencies beyond Node >= 18 (ffprobe optional for duration checks). Model routing, endpoints, parameter enums and pricing live in one JSON registry — adding a model is configuration, not code.
 ---
 
 # music-forge — Multi-Channel Music Generation Engine
@@ -10,7 +10,7 @@ Suno relay, useapi.net Mureka relay) using a zero-dependency Node CLI. Model rou
 endpoints, parameter enums and pricing live in one JSON registry — **adding a model
 is configuration, not code**.
 
-**Key setup**: set the channel's auth (`ACEDATA_API_KEY` for AceDataCloud, or
+**Key setup**: set the channel's auth (`ACEDATA_SUNO_API_KEY` for AceDataCloud, or
 `USEAPI_TOKEN` for useapi.net — token-file alternatives in `models.json` providers
 section). **Never write keys to any file, commit, document, or log.**
 

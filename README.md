@@ -28,7 +28,7 @@ Set one channel's key as an env var (or use the gitignored token-file alternativ
 listed in `models.json`):
 
 ```bash
-export ACEDATA_API_KEY=...   # from platform.acedata.cloud
+export ACEDATA_SUNO_API_KEY=...   # from platform.acedata.cloud (legacy name ACEDATA_API_KEY also accepted)
 export USEAPI_TOKEN=...      # from useapi.net, format user:<id>-<string>
 ```
 

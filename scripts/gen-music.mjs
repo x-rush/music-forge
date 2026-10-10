@@ -72,12 +72,13 @@ const resumeJob = arg("resume");
 if (!resumeJob && !prompt && !lyrics) die("缺 --prompt 或 --lyrics / --lyrics-file（总得告诉它写什么歌）");
 
 // ---------- 鉴权（env 优先，退 gitignored token 文件；绝不写入任何文件/日志） ----------
-let apiKey = process.env[providerDef.auth_env];
+const authEnvNames = Array.isArray(providerDef.auth_env) ? providerDef.auth_env : [providerDef.auth_env];
+let apiKey = authEnvNames.map((n) => process.env[n]).find(Boolean);
 if (!apiKey && providerDef.auth_file) {
   const p = join(SKILL, providerDef.auth_file);
   if (existsSync(p)) apiKey = readFileSync(p, "utf8").trim();
 }
-if (!apiKey) die(`缺少鉴权：设环境变量 ${providerDef.auth_env}，或写入 ${providerDef.auth_file}（已 gitignore）`);
+if (!apiKey) die(`缺少鉴权：设环境变量 ${authEnvNames.join(" 或 ")}，或写入 ${providerDef.auth_file}（已 gitignore）`);
 
 // ---------- 预算门（超支 exit 2，与 image-forge 同语义） ----------
 function budgetCheck() {
