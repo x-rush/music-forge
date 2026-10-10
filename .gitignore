@@ -1,0 +1,6 @@
+scripts/gen-log.jsonl
+scripts/budget.json
+samples/
+music-output/
+providers/token.txt
+providers/useapi-token.txt

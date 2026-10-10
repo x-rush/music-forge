@@ -1,0 +1,116 @@
+{
+  "$comment": "music-forge model registry. Providers are channels; v1 里每个模型家族各绑定一个渠道（Suno → acedata 中转，Mureka → useapi 挂自有订阅）。参数枚举整理自两边官方文档 2026-10-10；status 标记 docs-verified（文档核对过）或 live-verified（真实出片验证过）。加模型 = 只改这个 JSON。",
+  "default_provider": "acedata",
+  "default_model": "suno-v6",
+  "providers": {
+    "acedata": {
+      "description": "AceDataCloud Suno 兼容中转（同步 REST：提交后连接保持约 1-2 分钟，直接返回成品曲目）",
+      "auth_env": "ACEDATA_API_KEY",
+      "auth_file": "providers/token.txt",
+      "base_url": "https://api.acedata.cloud",
+      "docs": "https://docs.acedata.cloud/zh-Hans/guides/suno/suno_audios",
+      "billing": "平台积分计费：generate ≈0.56 credits（普通）/ 1.12（max_mode 增强）；响应内 cost 为折后实扣",
+      "risk_note": "第三方中转非 Suno 官方直连，存在平台侧调价/变更风险，key 请自备",
+      "status": "docs-verified 2026-10-10"
+    },
+    "useapi": {
+      "description": "useapi.net 中转，驱动你自己的 Mureka 订阅账号（提交 + 轮询 jobs；每次生成返回 2 首）",
+      "auth_env": "USEAPI_TOKEN",
+      "auth_file": "providers/useapi-token.txt",
+      "base_url": "https://api.useapi.net/v1/mureka",
+      "docs": "https://useapi.net/docs/api-mureka-v1",
+      "billing": "消耗你自己的 Mureka 套餐额度（Pro $9/月 ≈500 首；Premier $27/月 ≈2000 首）；useapi 自身订阅 $15/月另计",
+      "risk_note": "第三方实验性接口，挂自有账号驱动，存在账号风控风险；job 仅保留 7 天",
+      "status": "docs-verified 2026-10-10；live 待 USEAPI_TOKEN + Mureka 订阅就绪后实测"
+    }
+  },
+  "models": {
+    "suno-v6": {
+      "vendor": "Suno",
+      "model": "chirp-v6",
+      "best_for": "人声成品歌首选：中英文歌词咬字好、style 标签跟随度最高",
+      "availability": {
+        "acedata": {
+          "endpoint": "suno/audios",
+          "model_id": "chirp-v6",
+          "params": {
+            "lyric_max_chars": 5000,
+            "title_max_chars": 100,
+            "style_max_chars": 1000,
+            "instrumental": "bool",
+            "negative_tags": "string，逗号分隔的反向风格标签",
+            "vocal_gender": ["f", "m"],
+            "duration_seconds": [10, 360],
+            "weirdness": "0-1",
+            "style_influence": "0-1",
+            "variety": ["off", "normal", "high", "extra", "max"]
+          },
+          "price_credits": { "generate": 0.56, "generate_max_mode": 1.12 },
+          "notes": "duration 是倾向值不是硬上限；每次任务通常回 2 个候选"
+        }
+      }
+    },
+    "suno-v45": {
+      "vendor": "Suno",
+      "model": "chirp-v4-5-plus",
+      "best_for": "降级备胎：文风更稳、偶尔比 v6 便宜；vocal_gender 自 4.5 起支持",
+      "availability": {
+        "acedata": {
+          "endpoint": "suno/audios",
+          "model_id": "chirp-v4-5-plus",
+          "params": {
+            "lyric_max_chars": 5000,
+            "title_max_chars": 100,
+            "style_max_chars": 1000,
+            "instrumental": "bool",
+            "negative_tags": "string",
+            "vocal_gender": ["f", "m"],
+            "duration_seconds": [10, 360]
+          },
+          "price_credits": { "generate": 0.56, "generate_max_mode": 1.12 },
+          "notes": "旧模型枚举（v4/v3.5）歌词上限 3000、style 上限 200，注册表不单列"
+        }
+      }
+    },
+    "mureka-v95": {
+      "vendor": "Mureka",
+      "model": "V9.5",
+      "best_for": "走自有订阅控成本的全功能歌曲生成；同家族支持语音克隆（speech 接口，视频配音备用）",
+      "availability": {
+        "useapi": {
+          "endpoint": "music/create",
+          "instrumental_endpoint": "music/create-instrumental",
+          "model_id": "V9.5",
+          "params": {
+            "prompt": "风格/歌曲描述（create-instrumental 时为主参数）",
+            "lyrics": "自定义歌词；歌词生成走 music/lyrics-generate（免费）",
+            "title": "string",
+            "async": "固定 true，提交后轮询 jobs/{jobid}"
+          },
+          "price": { "per_song_usd_est": 0.018, "unit": "Mureka 套餐额度（一次生成 2 首记 2）" },
+          "notes": "平均约 45 秒；每账号并发上限 10；job 保留 7 天"
+        }
+      }
+    },
+    "mureka-o2": {
+      "vendor": "Mureka",
+      "model": "O2",
+      "best_for": "Mureka 旗舰档：复杂编曲与人声表现优先于成本",
+      "availability": {
+        "useapi": {
+          "endpoint": "music/create",
+          "instrumental_endpoint": "music/create-instrumental",
+          "model_id": "O2",
+          "params": {
+            "prompt": "string",
+            "lyrics": "string",
+            "title": "string",
+            "async": true
+          },
+          "price": { "per_song_usd_est": 0.018, "unit": "Mureka 套餐额度（一次生成 2 首记 2）" },
+          "notes": "O2 档位在部分套餐中的额度消耗可能高于 V9.5，以 Mureka 后台实扣为准"
+        }
+      }
+    }
+  }
+}
