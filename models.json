@@ -11,7 +11,7 @@
       "docs": "https://docs.acedata.cloud/zh-Hans/guides/suno/suno_audios",
       "billing": "平台积分计费：generate ≈0.56 credits（普通）/ 1.12（max_mode 增强）；响应内 cost 为折后实扣",
       "risk_note": "第三方中转非 Suno 官方直连，存在平台侧调价/变更风险，key 请自备",
-      "status": "docs-verified 2026-10-10"
+      "status": "live-verified 2026-10-10（suno-v6 / suno-v6-mini 同步全链出歌；401/403 错误路实测）"
     },
     "useapi": {
       "description": "useapi.net 中转，驱动你自己的 Mureka 订阅账号（提交 + 轮询 jobs；每次生成返回 2 首）",

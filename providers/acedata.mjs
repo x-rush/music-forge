@@ -8,7 +8,9 @@
  *  - 鉴权 Header: Authorization: "Bearer <token>"（平台统一 token，非 Suno 官方 key）
  *  - 响应 { success, task_id?, data: [{ id, title, image_url, lyric, audio_url, model, state, duration }] }
  *    state ∈ succeeded / pending / running / error；同步返回应全部 succeeded
- *  - 实扣积分可能出现在 data[].cost.amount（折后），拿到就透传给账本
+ *  - [live 2026-10-10] 同步 generate 响应实测**不含 cost.amount**（文档写了但没返回）——
+ *    账本走 gen-music 的 est_credits 兜底（0.56/action 口径）
+ *  - [live 2026-10-10] 余额不足：HTTP 403 {"error":{"code":"used_up"}}；错 key：401 invalid_token
  */
 export async function generate({ model, endpoint, params, apiKey, onLog = () => {}, timeoutMs = 360000 }) {
   const payload = { action: 'generate', model: model.model_id, ...params };

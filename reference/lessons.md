@@ -23,3 +23,5 @@
 - `[docs]` 预算双通道独立：acedata 按 credits 计、useapi 按订阅额度估算美元计，`budget.mjs` 两把尺子，超支 exit 2 与 image-forge 同语义。
 - `[docs]` 下载校验双保险：文件 ≥50KB + ffprobe 时长；mp3 直链偶发残片，宁可让用户试听也别静默交付坏文件。
 - `[live 2026-10-10]` acedata 错 key 实测：HTTP 401 + `error.code=invalid_token`，端点/Bearer 头格式确认无误；provider 抛出的异常不要裸崩——gen-music 主流程已包 try/catch，401 附 key 来源提示、统一 `❌` 文案 + exit 2（与预算门同语义）。
+- `[live 2026-10-10]` acedata 同步 generate 实测两单（v6 76s / v6-mini 72s 各回 2 首）：**响应不含 `cost.amount`**（文档有写）——账本已加 est_credits 兜底；余额不足是 403 `used_up` 不是 401，key 有效性与余额是两回事。
+- `[live 2026-10-10]` v6 与 v6-mini API 面完全一致（参数/响应/耗时），单次时长 92-156s 浮动大（instrumental 也可能超 2 分钟），时长敏感场景靠 ffmpeg 后期裁。

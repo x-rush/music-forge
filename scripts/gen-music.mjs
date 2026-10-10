@@ -183,6 +183,7 @@ try {
     ts: new Date().toISOString(), skill: "music-forge", provider: providerName,
     model: alias, model_id: channel.model_id, task_id: result.task_id ?? null,
     tracks: files.length, cost_credits: result.cost_credits ?? null,
+    est_credits: result.cost_credits == null ? (channel.price_credits?.generate ?? null) : null,
     est_usd: providerName === "useapi" ? (channel.price?.per_song_usd_est ?? 0) * files.length : null,
     seconds: Math.round((Date.now() - started) / 1000),
     prompt: (prompt || lyrics || "").slice(0, 80), out_dir: outDir,
@@ -194,7 +195,7 @@ try {
   appendFileSync(LOG, JSON.stringify(entry) + "\n");
 
   console.log(`\n✅ ${files.length} 首已就绪（${entry.seconds}s）→ ${outDir}`);
-  console.log(`📒 记账：${providerName}/${alias}${entry.cost_credits ? ` · 实扣 ${entry.cost_credits} credits` : ""}${entry.est_usd ? ` · 估算 $${entry.est_usd.toFixed(3)}` : ""} · 报表：node ${join(HERE, "budget.mjs")}`);
+  console.log(`📒 记账：${providerName}/${alias}${entry.cost_credits ? ` · 实扣 ${entry.cost_credits} credits` : entry.est_credits ? ` · 估扣 ${entry.est_credits} credits（响应未带实扣）` : ""}${entry.est_usd ? ` · 估算 $${entry.est_usd.toFixed(3)}` : ""} · 报表：node ${join(HERE, "budget.mjs")}`);
 } catch (e) {
   const msg = String(e?.message ?? e);
   die(/HTTP 401\b/.test(msg)

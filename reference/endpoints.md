@@ -34,7 +34,8 @@
   "lyric", "audio_url", "video_url", "model", "state", "duration", "cost": {"amount": 0.6048} }] }
 ```
 - `state` ∈ `succeeded / pending / running / error`
-- 错误路 [live 2026-10-10]：错 key → HTTP 401，body `{ "error": { "message": "The token is invalid, please make sure your token is correct.", "code": "invalid_token" }, "trace_id": "…" }`——与 `success:false` 业务失败同构，provider 按 `error.code/message` 解析两条路都覆盖；Bearer 头格式与端点可达性已确认
+- [live 2026-10-10] 同步 generate 响应实测**不含 `cost.amount`**（文档写了但没返回）——账本走 `est_credits` 兜底（0.56/action）
+- 错误路 [live 2026-10-10]：错 key → HTTP 401，body `{ "error": { "message": "The token is invalid, please make sure your token is correct.", "code": "invalid_token" }, "trace_id": "…" }`；余额不足 → HTTP 403 `{"error":{"message":"Your balance is not sufficient…","code":"used_up"}}`——均与 `success:false` 业务失败同构，provider 按 `error.code/message` 解析两条路都覆盖；Bearer 头格式与端点可达性已确认
 - 同步模式：不传 `async`/`callback_url`，连接保持约 1–2 分钟直接返回成品
 - 异步/回调/NDJSON 流式为服务端集成预留，CLI v1 不用
 - 计费：generate ≈0.56 credits（普通）/ 1.12（max_mode）；`cost.amount` 为折后实扣
@@ -66,8 +67,8 @@
 - useapi 自身订阅 $15/月另计（全 API 通用，每服务可绑 3 账号）
 - 无公开余额 API，余量看 https://www.mureka.ai 后台
 
-## 冒烟测试清单（待执行）
-1. acedata：`--model suno-v6 --prompt <轻快测试曲> --instrumental` → 期望 2 首 mp3，时长>30s，账本含 cost_credits
-1b. acedata：`--model suno-v6-mini --prompt <短描述>` → 验证 v6-mini 通路；与 v6 对比实扣 credits/时长/质量差异，回填 registry notes
-2. useapi（token 就绪后）：`--model mureka-v95 --prompt <短描述>` → 期望 jobid→completed→2 首下载
-3. 异常路：错 key 401 文案；`--resume` 一个已完成 jobid 只下载不重复扣费
+## 冒烟测试清单
+1. ✅ [live 2026-10-10] acedata `--model suno-v6 --prompt "轻快测试曲" --instrumental` → 2 首《纸飞机起飞》92s/122s，76s 同步返回，账本落行（est_credits 兜底）
+1b. ✅ [live 2026-10-10] acedata `--model suno-v6-mini` 同参 → 2 首 156s/137s，72s 返回；API 面与 v6 无差异，质量对比待人工试听
+2. useapi（休眠）：`--model mureka-v95 --prompt <短描述>` → 期望 jobid→completed→2 首下载（订阅开通后）
+3. ✅ [live 2026-10-10] 异常路：错 key 401 invalid_token / 余额 403 used_up 文案均干净（❌ + exit 2）；`--resume` 待 useapi 实测
