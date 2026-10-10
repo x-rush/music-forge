@@ -50,6 +50,31 @@
         }
       }
     },
+    "suno-v6-mini": {
+      "vendor": "Suno",
+      "model": "chirp-v6-mini",
+      "best_for": "v6 轻量档：草稿与快速迭代；官方推荐正式成品优先 suno-v6（2026.09.09 与 v6 同批上线）",
+      "availability": {
+        "acedata": {
+          "endpoint": "suno/audios",
+          "model_id": "chirp-v6-mini",
+          "params": {
+            "lyric_max_chars": 5000,
+            "title_max_chars": 100,
+            "style_max_chars": 1000,
+            "instrumental": "bool",
+            "negative_tags": "string，逗号分隔的反向风格标签",
+            "vocal_gender": ["f", "m"],
+            "duration_seconds": [10, 360],
+            "weirdness": "0-1",
+            "style_influence": "0-1",
+            "variety": ["off", "normal", "high", "extra", "max"]
+          },
+          "price_credits": { "generate": 0.56, "generate_max_mode": 1.12 },
+          "notes": "计费按 action 与模型无关（generate 0.56 / max_mode 1.12）；官方文档未说明 v6-mini 与 v6 的质量/速度/限制差异（v6 行各限制列为空），按 v6 同参数面接入，实测后回填差异"
+        }
+      }
+    },
     "suno-v45": {
       "vendor": "Suno",
       "model": "chirp-v4-5-plus",

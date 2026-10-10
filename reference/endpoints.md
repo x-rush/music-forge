@@ -63,5 +63,6 @@
 
 ## 冒烟测试清单（待执行）
 1. acedata：`--model suno-v6 --prompt <轻快测试曲> --instrumental` → 期望 2 首 mp3，时长>30s，账本含 cost_credits
+1b. acedata：`--model suno-v6-mini --prompt <短描述>` → 验证 v6-mini 通路；与 v6 对比实扣 credits/时长/质量差异，回填 registry notes
 2. useapi（token 就绪后）：`--model mureka-v95 --prompt <短描述>` → 期望 jobid→completed→2 首下载
 3. 异常路：错 key 401 文案；`--resume` 一个已完成 jobid 只下载不重复扣费
