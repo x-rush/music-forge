@@ -24,6 +24,7 @@ When triggered, the system provides a Base directory (referenced as `<skill>` be
 - `<skill>/providers/` — channel implementations (acedata = sync REST; useapi = submit + poll)
 - `<skill>/models.json` — model registry: aliases, endpoints, parameter enums, prices
 - `<skill>/scripts/stems.mjs` — 音轨分离（extract_stem：有词歌 → 人声轨 + 纯伴奏 BGM，1.12 credits）
+- `<skill>/scripts/actions.mjs` — 高频四连（extend 续写 / speed 变速不变调 / replace-section 段落替换 / sfx 音效），统一异步+轮询+resume
 - `<skill>/scripts/timing.mjs` — 歌词词级时间轴对齐（/suno/timing：音频 + 官方歌词 → aligned_words + LRC，实测免费）
 - `<skill>/reference/` — endpoint contracts, prompting guide and lessons
 

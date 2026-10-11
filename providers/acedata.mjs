@@ -52,10 +52,12 @@ export async function pollTask({ task_id, apiKey, onLog = () => {}, timeoutMs = 
     const ok = data.filter((t) => t.audio_url);
     if (ok.length) return wrapped;
     const errs = data.filter((t) => t.state === 'error');
-    if (data.length && errs.length === data.length) {
+    // [live 2026-10-10] data 可能短暂全部 error（服务端内部重试），以包装层 finished_at 为终态判据
+    const terminal = j && typeof j === 'object' && !Array.isArray(j) && j.finished_at != null;
+    if (data.length && errs.length === data.length && terminal) {
       throw new Error(`acedata 任务失败: ${JSON.stringify(errs[0]).slice(0, 300)}`);
     }
-    onLog(`… ${data.length ? data.map((t) => t.state).join(',') : 'pending'}`);
+    onLog(`… ${data.length ? data.map((t) => t.state).join(',') : 'pending'}${!terminal && errs.length ? '（瞬时 error，等待服务端）' : ''}`);
   }
   throw new Error(`轮询超时（${Math.round(timeoutMs / 1000)}s）：task_id=${task_id} 可稍后 --resume ${task_id} 重取`);
 }
