@@ -1,4 +1,4 @@
-# 端点契约备忘（整理自两边官方文档，2026-10-10）
+# 端点契约备忘（整理自两边官方文档，2026-10-10）；**2026-10-10 acedata 统一异步化（async:true + /suno/tasks 轮询）**
 
 > 状态标记：`[docs]` = 文档核对未实测；`[live]` = 真实调用验证过。实测后把本文件对应条目升级并写日期。
 
@@ -47,6 +47,14 @@ generate · extend · upload_extend · cover · upload_cover · concat · replac
 - 异步/回调/NDJSON 流式为服务端集成预留，CLI v1 不用
 - 计费：generate ≈0.56 credits（普通）/ 1.12（max_mode）；`cost.amount` 为折后实扣
 
+## acedata 异步任务查询 [live 2026-10-10]
+
+- 提交：generate/extract_stem 请求体加 `async: true` → 立即回 `{ task_id }`（服务端忽略 async 时同步返回成品，防御式兼容）
+- 查询：`POST https://api.acedata.cloud/suno/tasks`，body `{ "id": "<task_id>" }` → 任务包装 `{ type, response: { success, task_id, data: [...] }, finished_at }`
+- 未就绪 = response.data 为空或无 audio_url；全部 error = 失败；**响应不带 cost.amount，账本走 est 兜底**
+- 结果保留时长文档未注明——出活立即下载
+- [live] 探测史：假 id 返回 200 {}（勿误判端点不存在）；task_id 字段名/GET/{task_id}/action:query 均无效，唯一正确 body 键是 `id`
+
 ## useapi.net · Mureka（自有订阅） [docs]
 
 > ⚠️ 渠道归属：Mureka 只走本渠道（useapi.net），与 AceDataCloud（仅 Suno）完全隔离。
@@ -80,4 +88,4 @@ generate · extend · upload_extend · cover · upload_cover · concat · replac
 1c. ✅ [live 2026-10-10] custom 模式（用户给词）：`--lyrics-file --title --style` → 2 首《开往春天的慢车》116s/110s；返回词保留全部关键句与结构标签（custom=true 路径验证）；歌词三路工作流见 SKILL.md Workflow #4
 1d. ✅ [live 2026-10-10] extract_stem 分离：`stems.mjs --from meta.json --type vocals` → 2 组候选 ×(Vocals)+(Instrumental) 各 123s 与源一致；有词歌→纯伴奏 BGM 通路打通
 2. useapi（休眠）：`--model mureka-v95 --prompt <短描述>` → 期望 jobid→completed→2 首下载（订阅开通后）
-3. ✅ [live 2026-10-10] 异常路：错 key 401 invalid_token / 余额 403 used_up 文案均干净（❌ + exit 2）；`--resume` 待 useapi 实测
+3. ✅ [live 2026-10-10] 异常路：401/403 文案干净（❌ + exit 2）；**async 提交 + /suno/tasks 轮询 + --resume 全链实测**（孤儿任务 038f1be2 挽回 2 首《跳跳测试曲》）；useapi resume 待订阅

@@ -10,6 +10,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
+import { pollTask } from "../providers/acedata.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL = dirname(HERE);
@@ -27,6 +28,7 @@ if (process.argv.includes("--help") || !process.argv[2]) {
   --audio-id <id>     acedata 音轨 id（meta.json tracks[].id）
   --from <meta.json>  从历史生成的 meta.json 读第一条 track 的 id
   --type <stem_type>  分离目标（默认 vocals；bass/drums 等以文档为准）
+  --resume <task_id>  重取分离任务（中断恢复，只下载不重复扣费）
   --out <dir>         输出目录（默认 ./stem-output/<时间戳>-<type>/）`);
   process.exit(0);
 }
@@ -53,6 +55,7 @@ if (!apiKey) die(`缺少鉴权：设环境变量 ${authEnvNames.join(" 或 ")}�
 }
 
 // ---------- 定位 audio_id ----------
+const resumeTask = arg("resume");
 let audioId = arg("audio-id");
 if (!audioId && arg("from")) {
   const meta = JSON.parse(readFileSync(resolve(arg("from")), "utf8"));
@@ -60,25 +63,38 @@ if (!audioId && arg("from")) {
   if (!audioId) die("该 meta.json 的 tracks 里没有 id（旧版本生成的留档）——用新生成的 meta 或直接 --audio-id");
   console.log(`从 meta 取 audio_id=${audioId}（${meta.tracks[0].title ?? "?"}）`);
 }
-if (!audioId) die("缺 --audio-id 或 --from");
+if (!audioId && !resumeTask) die("缺 --audio-id / --from / --resume 之一");
 const stemType = arg("type") ?? "vocals";
 
-// ---------- 提交（同步，约 1-2 分钟） ----------
+// ---------- 提交（异步拿 task_id → 轮询，约 1-2 分钟） ----------
 const started = Date.now();
-console.log(`🎚️ 分离 ${stemType}（audio_id=${audioId}）… 同步等待约 1-2 分钟`);
-const res = await fetch("https://api.acedata.cloud/suno/audios", {
-  method: "POST",
-  headers: { accept: "application/json", "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-  body: JSON.stringify({ action: "extract_stem", audio_id: audioId, stem_type: stemType, audio_format: "mp3" }),
-  signal: AbortSignal.timeout(360000),
-});
-const text = await res.text();
-if (!res.ok) die(`acedata HTTP ${res.status}\n${text.slice(0, 500)}`);
-let j;
-try { j = JSON.parse(text); } catch { die(`响应非 JSON: ${text.slice(0, 300)}`); }
-if (j.success === false) { const e = j.error || {}; die(`业务失败 [${e.code ?? "?"}] ${e.message ?? text.slice(0, 300)}`); }
-const items = (Array.isArray(j.data) ? j.data : []).filter((t) => t.audio_url);
-if (!items.length) die(`响应无可用音轨: ${text.slice(0, 300)}`);
+let final, taskId = resumeTask ?? null;
+if (resumeTask) {
+  console.log(`♻️ 重取分离任务 ${resumeTask}…`);
+} else {
+  console.log(`🎚️ 分离 ${stemType}（audio_id=${audioId}，异步）…`);
+  const res = await fetch("https://api.acedata.cloud/suno/audios", {
+    method: "POST",
+    headers: { accept: "application/json", "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ action: "extract_stem", audio_id: audioId, stem_type: stemType, audio_format: "mp3", async: true }),
+    signal: AbortSignal.timeout(30000),
+  });
+  const text = await res.text();
+  if (!res.ok) die(`acedata HTTP ${res.status}\n${text.slice(0, 500)}`);
+  let j;
+  try { j = JSON.parse(text); } catch { die(`响应非 JSON: ${text.slice(0, 300)}`); }
+  if (j.success === false) { const e = j.error || {}; die(`业务失败 [${e.code ?? "?"}] ${e.message ?? text.slice(0, 300)}`); }
+  if (Array.isArray(j.data) && j.data.length) {
+    final = j; // 服务端忽略 async 同步返回成品（防御式兼容）
+  } else {
+    if (!j.task_id) die(`异步响应无 task_id: ${text.slice(0, 300)}`);
+    taskId = j.task_id;
+    console.log(`task_id=${taskId}，每 5s 轮询…`);
+  }
+}
+if (!final) final = await pollTask({ task_id: taskId, apiKey, onLog: (m) => console.log(m), timeoutMs: 600000 });
+const items = (Array.isArray(final.data) ? final.data : []).filter((t) => t.audio_url);
+if (!items.length) die(`响应无可用音轨: ${JSON.stringify(final).slice(0, 300)}`);
 
 // ---------- 下载（data[] 为 2 组候选 × 隔离轨+互补轨） ----------
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -92,12 +108,12 @@ for (const [i, t] of items.entries()) {
   console.log(`💾 ${dest}（set${t.stem_set ?? "?"}）`);
 }
 
-// ---------- 记账（extract_stem 响应带实扣 cost.amount） ----------
-const cost = j.data?.map((t) => t?.cost?.amount).find((v) => typeof v === "number") ?? null;
+// ---------- 记账（extract_stem 响应带实扣 cost.amount；resume 不重复扣费） ----------
+const cost = final.data?.map((t) => t?.cost?.amount).find((v) => typeof v === "number") ?? null;
 const entry = {
   ts: new Date().toISOString(), skill: "music-forge", purpose: "stems", provider: "acedata",
-  model: `extract_stem/${stemType}`, task_id: j.task_id ?? null,
-  cost_credits: cost, est_credits: cost == null ? 1.12 : null,
+  model: `extract_stem/${stemType}`, task_id: taskId ?? final.task_id ?? null,
+  cost_credits: cost, est_credits: !resumeTask && cost == null ? 1.12 : null,
   seconds: Math.round((Date.now() - started) / 1000), audio_id: audioId, out_dir: outDir,
 };
 if (existsSync(LOG) && !readFileSync(LOG, "utf8").endsWith("\n")) {

@@ -33,7 +33,7 @@ if (process.argv.includes("--help") || !process.argv[2]) {
 
 必选（二选一）:
   --model <alias>     模型别名，见 models.json（${Object.keys(REGISTRY.models).join(", ")}）
-  --resume <jobid>    重取 useapi 作业（配 --provider useapi --model <alias>）
+  --resume <task_id>  重取任务（acedata task_id / useapi jobid，只下载不重复扣费）
 
 生成参数:
   --prompt <text>     灵感模式描述（无歌词时必填）
@@ -161,10 +161,10 @@ const onLog = (m) => console.log(`  ${m}`);
 const started = Date.now();
 
 try {
-  let result;
-  if (resumeJob) {
-    if (providerName !== "useapi") die("--resume 目前仅支持 useapi 通道");
-    console.log(`♻️ 重取 useapi job ${resumeJob}`);
+let result;
+if (resumeJob) {
+  console.log(`♻️ 重取 ${providerName} task ${resumeJob}`);
+  if (providerName === "useapi") {
     const r = await fetch(`https://api.useapi.net/v1/mureka/jobs/${encodeURIComponent(resumeJob)}`, {
       headers: { authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(15000),
     });
@@ -172,9 +172,14 @@ try {
     const j = await r.json();
     if (j.status !== "completed") die(`job 状态 ${j.status}，未完成不能下载`);
     result = { task_id: resumeJob, tracks: (j.response?.songs ?? []).filter((s) => s.mp3_url).map((s) => ({ title: s.title, audio_url: s.mp3_url, cover_url: s.cover, duration_s: s.duration_milliseconds / 1000 })) };
+  } else if (providerName === "acedata") {
+    result = await provider.resume({ task_id: resumeJob, apiKey, onLog });
   } else {
-    result = await provider.generate({ model: channel, endpoint: channel.endpoint, params: buildParams(), apiKey, onLog });
+    die(`--resume 暂不支持 ${providerName} 通道`);
   }
+} else {
+  result = await provider.generate({ model: channel, endpoint: channel.endpoint, params: buildParams(), apiKey, onLog });
+}
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const outDir = resolve(arg("out") || `music-output/${stamp}-${alias}`);
@@ -191,7 +196,7 @@ try {
     ts: new Date().toISOString(), skill: "music-forge", provider: providerName,
     model: alias, model_id: channel.model_id, task_id: result.task_id ?? null,
     tracks: files.length, cost_credits: result.cost_credits ?? null,
-    est_credits: result.cost_credits == null ? (channel.price_credits?.generate ?? null) : null,
+    est_credits: !resumeJob && result.cost_credits == null ? (channel.price_credits?.generate ?? null) : null,
     est_usd: providerName === "useapi" ? (channel.price?.per_song_usd_est ?? 0) * files.length : null,
     seconds: Math.round((Date.now() - started) / 1000),
     prompt: (prompt || lyrics || "").slice(0, 80), out_dir: outDir,
@@ -206,6 +211,9 @@ try {
   console.log(`📒 记账：${providerName}/${alias}${entry.cost_credits ? ` · 实扣 ${entry.cost_credits} credits` : entry.est_credits ? ` · 估扣 ${entry.est_credits} credits（响应未带实扣）` : ""}${entry.est_usd ? ` · 估算 $${entry.est_usd.toFixed(3)}` : ""} · 报表：node ${join(HERE, "budget.mjs")}`);
   if (!instrumental && !lyrics && providerName === "acedata") {
     console.log(`💡 灵感模式：Suno 自动写词在 ${join(outDir, "meta.json")}（tracks[].lyrics）——想改词就改完走 custom 模式（--lyrics-file）重跑`);
+  }
+  if (resumeJob) {
+    console.log(`💡 resume 不重复扣费；原提交若未入账请按注册表单价补记（generate 0.56 / max_mode 1.12 credits）`);
   }
 } catch (e) {
   const msg = String(e?.message ?? e);
