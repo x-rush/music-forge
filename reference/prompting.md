@@ -93,3 +93,11 @@ node gen-music.mjs --model suno-v6 --lyrics-file song.txt --title "歌名" \
 # 草稿试方向（mini + 高多样性）
 node gen-music.mjs --model suno-v6-mini --prompt "国风电子，戏腔女声" --variety high
 ```
+
+## 需求路由速判（防两个方向的失败）
+
+- 极简（"来首歌"）→ 灵感模式直出（最省最快），别逼用户先写词
+- 有明确主题/故事 → 走歌词起草工作流（先词后歌，确认再生成）
+- 拿不准参数 → 用注册表默认档（v6 + 灵感模式），跑一轮再按听感调
+
+原则：模式路由是捷径不是门槛——需求已经清楚就别加流程，不清楚就先补齐再动手。
