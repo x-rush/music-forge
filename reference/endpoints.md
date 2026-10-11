@@ -45,6 +45,7 @@ generate · extend · upload_extend · cover · upload_cover · concat · replac
 - 错误路 [live 2026-10-10]：错 key → HTTP 401，body `{ "error": { "message": "The token is invalid, please make sure your token is correct.", "code": "invalid_token" }, "trace_id": "…" }`；余额不足 → HTTP 403 `{"error":{"message":"Your balance is not sufficient…","code":"used_up"}}`——均与 `success:false` 业务失败同构，provider 按 `error.code/message` 解析两条路都覆盖；Bearer 头格式与端点可达性已确认
 - 同步模式：不传 `async`/`callback_url`，连接保持约 1–2 分钟直接返回成品
 - 异步/回调/NDJSON 流式为服务端集成预留，CLI v1 不用
+- **timing（词级时间轴对齐）[live 2026-10-10，小拾/MV 场景贡献]**：`POST /suno/timing`，body `{ audio_id, lyric }`，同步 <30s 返回 `{ success, data: { aligned_words: [{ word, success, start_s, end_s, p_align }] } }`——word 含结构标签和换行，免费（无 cost）。CLI：`scripts/timing.mjs`（输出 timing.json + 行级 LRC）。已知坑：间奏被吞进句尾 end_s；旧 meta 无 id 时从 audio_url 提取 UUID 兜底（异步任务查询的 data[] 也可能无 id）
 - 计费：generate ≈0.56 credits（普通）/ 1.12（max_mode）；`cost.amount` 为折后实扣
 
 ## acedata 异步任务查询 [live 2026-10-10]
