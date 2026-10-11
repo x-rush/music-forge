@@ -90,3 +90,10 @@ generate · extend · upload_extend · cover · upload_cover · concat · replac
 1d. ✅ [live 2026-10-10] extract_stem 分离：`stems.mjs --from meta.json --type vocals` → 2 组候选 ×(Vocals)+(Instrumental) 各 123s 与源一致；有词歌→纯伴奏 BGM 通路打通
 2. useapi（休眠）：`--model mureka-v95 --prompt <短描述>` → 期望 jobid→completed→2 首下载（订阅开通后）
 3. ✅ [live 2026-10-10] 异常路：401/403 文案干净（❌ + exit 2）；**async 提交 + /suno/tasks 轮询 + --resume 全链实测**（孤儿任务 038f1be2 挽回 2 首《跳跳测试曲》）；useapi resume 待订阅
+
+## upload 上传外部音频 [live 2026-10-11]
+
+- `POST /suno/upload`，body `{ audio_url }`（standard，0.06cr，同步回 `data.audio_id`）或 `{ audio_url, mode:"enhanced", name }`（1.87cr，异步回 task_id → /suno/tasks 轮询，读 `response.data[0].audio_id`）
+- audio_url 必须公网可访问；enhanced 处理约 2 分钟+
+- audio_id 解锁：upload_extend / upload_cover / underpainting（清唱加伴奏）/ overpainting；stems/extract_stem 跨账号可能受限
+- CLI：`actions.mjs upload --audio-url <url> [--mode enhanced] [--name <名>]`；inspo 则直接吃公网 URL 列表无需上传

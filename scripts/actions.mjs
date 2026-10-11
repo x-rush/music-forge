@@ -26,8 +26,8 @@ const hasFlag = (name) => process.argv.includes(`--${name}`);
 const safeName = (s, fallback) => { const n = String(s ?? fallback).replace(/[\\/:*?"<>|\s]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60); return n || fallback; };
 const readTxt = (p) => p ? readFileSync(resolve(p), "utf8") : undefined;
 
-const EST_CREDITS = { extend: null, speed: 0.28, "replace-section": null, sfx: 0.112 };
-const ACTIONS = ["extend", "speed", "replace-section", "sfx", "any"];
+const EST_CREDITS = { extend: null, speed: 0.28, "replace-section": null, sfx: 0.112, upload: 0.06, "upload-enhanced": 1.87 };
+const ACTIONS = ["extend", "speed", "replace-section", "sfx", "upload", "any"];
 
 if (process.argv.includes("--help") || !process.argv[2]) {
   console.log(`music-forge actions — acedata 高频操作（异步 + 轮询 + resume）
@@ -36,12 +36,14 @@ if (process.argv.includes("--help") || !process.argv[2]) {
   speed             变速（keep_pitch 可不变调，0.28cr）：--audio-id --multiplier <0.25-4> [--keep-pitch] [--title]
   replace-section   段落替换（只改指定秒数范围，省 credits）：--audio-id --lyric <全词txt> --section-prompt "<新段落>" --start <秒> --end <秒> [--mode full_song]
   sfx               文本生成音效（0.112cr）：--sound "<描述>" [--type one-shot|loop] [--bpm N] [--key <key>]
+  upload            上传外部音频拿 audio_id（standard 0.06cr 同步 / enhanced 1.87cr 异步，解锁 underpainting/overpainting/upload_extend）：--audio-url <公网地址> [--mode enhanced] [--name <名>]
   any               任意 acedata action 全参数透传：--action <名> --data '{字段:值,…}'（覆盖全量 action：cover/concat/remaster/mashup/samples/inspo/all_stems/add_stem/upload_extend/upload_cover/underpainting/overpainting/remaster/artist_consistency…）
 
 通用：--resume <task_id>（中断恢复）· --out <dir> · 全部走异步提交 + 轮询`);
   process.exit(0);
 }
 
+const started = Date.now();
 const action = process.argv[2];
 if (!ACTIONS.includes(action)) die(`未知 action "${action}"，可选：${ACTIONS.join(" / ")}`);
 
@@ -73,6 +75,51 @@ let body;
 const title = arg("title") ?? `${action}-${new Date().toISOString().slice(5, 16)}`;
 if (resumeTask) {
   body = null; // resume 只轮询
+} else if (action === "upload") {
+  // [live 2026-10-11] 响应形状特殊：data 是对象（含 audio_id），不是数组——独立分支处理
+  const audioUrl = arg("audio-url") ?? die("upload 需要 --audio-url <公网音频CDN地址>");
+  const mode = arg("mode") ?? "standard";
+  const name = arg("name");
+  if (mode === "enhanced" && !name) die("enhanced 模式需要 --name（1-100 字符）");
+  body = { action: "upload", audio_url: audioUrl };
+  if (mode === "enhanced") { body.mode = "enhanced"; body.name = name; }
+  console.log(`📤 上传音频（${mode}）…`);
+  const res = await fetch("https://api.acedata.cloud/suno/upload", {
+    method: "POST",
+    headers: { accept: "application/json", "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120000),
+  });
+  const text = await res.text();
+  if (!res.ok) die(`acedata HTTP ${res.status}\n${text.slice(0, 500)}`);
+  let j;
+  try { j = JSON.parse(text); } catch { die(`响应非 JSON: ${text.slice(0, 300)}`); }
+  if (j.success === false) { const e = j.error || {}; die(`业务失败 [${e.code ?? "?"}] ${e.message ?? text.slice(0, 300)}`); }
+  let rec = j.data ?? null;
+  if (mode === "enhanced") {
+    taskId = j.task_id ?? die(`enhanced 响应无 task_id: ${text.slice(0, 200)}`);
+    console.log(`task_id=${taskId}，每 5s 轮询（enhanced 约需 2 分钟+）…`);
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const rr = await fetch("https://api.acedata.cloud/suno/tasks", { method: "POST", headers: { accept: "application/json", "content-type": "application/json", authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ id: taskId }), signal: AbortSignal.timeout(20000) });
+      const w = await rr.json();
+      const inner = w.response ?? {};
+      const d0 = Array.isArray(inner.data) ? inner.data[0] : null;
+      if (d0?.audio_id) { rec = d0; break; }
+      console.log("… 上传处理中");
+    }
+  }
+  if (!rec?.audio_id) die(`上传响应无 audio_id: ${text.slice(0, 300)}`);
+  const stampTs = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const outDir = resolve(arg("out") || `action-output/${stampTs}-upload`);
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(join(outDir, "upload-result.json"), JSON.stringify({ audio_id: rec.audio_id, lyric: rec.lyric ?? null, style: rec.style ?? null, title: rec.title ?? null, duration: rec.duration ?? null }, null, 2));
+  console.log(`✅ 上传完成 → audio_id=${rec.audio_id}`);
+  console.log(`   （下游 upload_extend / upload_cover / underpainting / overpainting 用此 id；分析结果存 upload-result.json）`);
+  if (existsSync(LOG) && !readFileSync(LOG, "utf8").endsWith("\n")) { const c = readFileSync(LOG, "utf8"); writeFileSync(LOG, c.replace(/\n?$/, "\n")); }
+  const { appendFileSync } = await import("node:fs");
+  appendFileSync(LOG, JSON.stringify({ ts: new Date().toISOString(), skill: "music-forge", purpose: "upload", provider: "acedata", model: "upload/" + mode, audio_id: rec.audio_id, cost_credits: null, est_credits: mode === "enhanced" ? 1.87 : 0.06, seconds: Math.round((Date.now() - started) / 1000), out_dir: outDir }) + "\n");
+  process.exit(0);
 } else if (action === "any") {
   const acedataAction = arg("action") ?? die("any 需要 --action <acedata_action_name>");
   const dataJson = arg("data") ?? die("any 需要 --data '{…}'（action 的全部业务字段，JSON 对象）");
@@ -106,7 +153,6 @@ if (resumeTask) {
 }
 
 // ---------- 提交 / 恢复 ----------
-const started = Date.now();
 let taskId = resumeTask ?? null;
 let final = null;
 if (resumeTask) {
