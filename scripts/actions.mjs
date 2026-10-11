@@ -27,7 +27,7 @@ const safeName = (s, fallback) => { const n = String(s ?? fallback).replace(/[\\
 const readTxt = (p) => p ? readFileSync(resolve(p), "utf8") : undefined;
 
 const EST_CREDITS = { extend: null, speed: 0.28, "replace-section": null, sfx: 0.112 };
-const ACTIONS = ["extend", "speed", "replace-section", "sfx"];
+const ACTIONS = ["extend", "speed", "replace-section", "sfx", "any"];
 
 if (process.argv.includes("--help") || !process.argv[2]) {
   console.log(`music-forge actions — acedata 高频操作（异步 + 轮询 + resume）
@@ -36,6 +36,7 @@ if (process.argv.includes("--help") || !process.argv[2]) {
   speed             变速（keep_pitch 可不变调，0.28cr）：--audio-id --multiplier <0.25-4> [--keep-pitch] [--title]
   replace-section   段落替换（只改指定秒数范围，省 credits）：--audio-id --lyric <全词txt> --section-prompt "<新段落>" --start <秒> --end <秒> [--mode full_song]
   sfx               文本生成音效（0.112cr）：--sound "<描述>" [--type one-shot|loop] [--bpm N] [--key <key>]
+  any               任意 acedata action 全参数透传：--action <名> --data '{字段:值,…}'（覆盖全量 action：cover/concat/remaster/mashup/samples/inspo/all_stems/add_stem/upload_extend/upload_cover/underpainting/overpainting/remaster/artist_consistency…）
 
 通用：--resume <task_id>（中断恢复）· --out <dir> · 全部走异步提交 + 轮询`);
   process.exit(0);
@@ -72,6 +73,12 @@ let body;
 const title = arg("title") ?? `${action}-${new Date().toISOString().slice(5, 16)}`;
 if (resumeTask) {
   body = null; // resume 只轮询
+} else if (action === "any") {
+  const acedataAction = arg("action") ?? die("any 需要 --action <acedata_action_name>");
+  const dataJson = arg("data") ?? die("any 需要 --data '{…}'（action 的全部业务字段，JSON 对象）");
+  let fields;
+  try { fields = JSON.parse(dataJson); } catch { die("--data 不是合法 JSON"); }
+  body = { action: acedataAction, ...fields, async: true, title: arg("title") ?? acedataAction + "-" + new Date().toISOString().slice(5, 16) };
 } else if (action === "extend") {
   if (!audioId) die("extend 需要 --audio-id");
   const cont = arg("continue-at") ? Number(arg("continue-at")) : die("extend 需要 --continue-at <秒>");

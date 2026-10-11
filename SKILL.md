@@ -56,7 +56,8 @@ node <skill>/scripts/budget.js --check
    - **用户给灵感、想直接听** → 灵感模式一把出（Suno 自动写词）；自动词在 `meta.json` 的 `tracks[].lyrics` 里——用户想改词就改完走 custom 模式重跑
 5. **歌词纪律**：遵循 `reference/prompting.md` — style 标签体系、结构标签、参数调优手册（weirdness / style_influence / variety / max_mode 已 CLI 化）。歌词用 `--lyrics-file` 传入（免 shell 转义），结构标签写全（`[Verse]`/`[Chorus]`/`[Bridge]`），中文注意音节与断句；`--style` 只放风格标签不放整句。
 6. **一次生成 → 校验（文件大小 + ffprobe 时长）→ 交付，让用户试听再迭代。** 每次迭代 = 一次提交 + 一次试听反馈，不要连环重生成。
-7. **MV/歌词视频**：`timing.js` 出词级时间轴（LRC）+ `stems.js` 出纯伴奏，配 video-forge 的画面与 `assemble --srt`。
+7. **后期动作决策**（actions.js）：歌短视频长 → extend 续写；节奏不合 → speed 变速(keep_pitch)；某段词要改 → replace-section（比整首重生成省 credits）；缺音效 → sfx；其余 action（cover/mashup/remaster…）→ any 透传；**分离伴奏用 stems，词级时间轴用 timing**。
+8. **MV/歌词视频**：`timing.js` 出词级时间轴（LRC）+ `stems.js` 出纯伴奏，配 video-forge 的画面与 `assemble --srt`。
 
 ## 关键规则
 
