@@ -97,3 +97,9 @@ generate · extend · upload_extend · cover · upload_cover · concat · replac
 - audio_url 必须公网可访问；enhanced 处理约 2 分钟+
 - audio_id 解锁：upload_extend / upload_cover / underpainting（清唱加伴奏）/ overpainting；stems/extract_stem 跨账号可能受限
 - CLI：`actions.mjs upload --audio-url <url> [--mode enhanced] [--name <名>]`；inspo 则直接吃公网 URL 列表无需上传
+
+## mp4 获取官方 MP4 [docs 2026-10-11，live 首跑被服务端 500 拒]
+
+- `POST /suno/mp4`，body `{ audio_id }`（同 /suno/audios 鉴权）
+- 同步返回 `{ success, task_id, data: { video_url } }`——data.video_url 即官方 MP4 直链
+- ⚠️ [live 2026-10-11] 实测被 500 "The current account has been offline or blocked" 拒绝——generate/stems/timing 同 key 均正常，推测 mp4 端点有独立权限/服务状态限制。后续重试

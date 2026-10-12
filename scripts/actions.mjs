@@ -27,7 +27,7 @@ const safeName = (s, fallback) => { const n = String(s ?? fallback).replace(/[\\
 const readTxt = (p) => p ? readFileSync(resolve(p), "utf8") : undefined;
 
 const EST_CREDITS = { extend: null, speed: 0.28, "replace-section": null, sfx: 0.112, upload: 0.06, "upload-enhanced": 1.87 };
-const ACTIONS = ["extend", "speed", "replace-section", "sfx", "upload", "any"];
+const ACTIONS = ["extend", "speed", "replace-section", "sfx", "upload", "mp4", "any"];
 
 if (process.argv.includes("--help") || !process.argv[2]) {
   console.log(`music-forge actions — acedata 高频操作（异步 + 轮询 + resume）
@@ -75,6 +75,9 @@ let body;
 const title = arg("title") ?? `${action}-${new Date().toISOString().slice(5, 16)}`;
 if (resumeTask) {
   body = null; // resume 只轮询
+} else if (action === "mp4") {
+  if (!audioId) die("mp4 需要 --audio-id");
+  body = { action: "mp4", audio_id: audioId };
 } else if (action === "upload") {
   // [live 2026-10-11] 响应形状特殊：data 是对象（含 audio_id），不是数组——独立分支处理
   const audioUrl = arg("audio-url") ?? die("upload 需要 --audio-url <公网音频CDN地址>");
@@ -159,7 +162,8 @@ if (resumeTask) {
   console.log(`♻️ 重取 ${action} 任务 ${resumeTask}…`);
 } else {
   console.log(`🎚️ ${action} 提交（异步）…`);
-  const res = await fetch("https://api.acedata.cloud/suno/audios", {
+  const submitUrl = action === "mp4" ? "https://api.acedata.cloud/suno/mp4" : "https://api.acedata.cloud/suno/audios";
+  const res = await fetch(submitUrl, {
     method: "POST",
     headers: { accept: "application/json", "content-type": "application/json", authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(body),
@@ -177,7 +181,40 @@ if (resumeTask) {
     taskId = j.task_id;
     console.log(`task_id=${taskId}，每 5s 轮询…`);
   }
+  // ---------- mp4 同步直出：响应自带 data.video_url，直接下载并退出 ----------
+  if (action === "mp4") {
+    const videoUrl = j?.data?.video_url ?? die(`mp4 响应无 video_url: ${text.slice(0, 200)}`);
+    const mp4Out = resolve(arg("out") || `action-output/${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}-mp4`);
+    mkdirSync(mp4Out, { recursive: true });
+    const mp4Dest = join(mp4Out, `${safeName(title)}.mp4`);
+    const vr = await fetch(videoUrl, { signal: AbortSignal.timeout(120000) });
+    if (!vr.ok) die(`mp4 下载失败 HTTP ${vr.status}`);
+    writeFileSync(mp4Dest, Buffer.from(await vr.arrayBuffer()));
+    console.log(`✅ mp4 就绪 → ${mp4Dest}`);
+    console.log(`   video_url: ${videoUrl}`);
+    if (existsSync(LOG) && !readFileSync(LOG, "utf8").endsWith("\n")) { const c = readFileSync(LOG, "utf8"); writeFileSync(LOG, c.replace(/\n?$/, "\n")); }
+    const { appendFileSync } = await import("node:fs");
+    appendFileSync(LOG, JSON.stringify({ ts: new Date().toISOString(), skill: "music-forge", purpose: "mp4", provider: "acedata", model: "mp4", audio_id: audioId, cost_credits: null, est_usd: null, seconds: Math.round((Date.now() - started) / 1000), out_dir: mp4Out }) + "\n");
+    process.exit(0);
+  }
 }
+// ---------- mp4 专用下载（响应形状不同：data.video_url） ----------
+if (action === "mp4") {
+  const videoUrl = final?.data?.video_url ?? die(`mp4 响应无 video_url: ${JSON.stringify(final).slice(0, 200)}`);
+  const outDir = resolve(arg("out") || `action-output/${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}-mp4`);
+  mkdirSync(outDir, { recursive: true });
+  const dest = join(outDir, `${safeName(title)}.mp4`);
+  const r = await fetch(videoUrl, { signal: AbortSignal.timeout(120000) });
+  if (!r.ok) die(`mp4 下载失败 HTTP ${r.status}`);
+  writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
+  console.log(`✅ mp4 就绪 → ${dest}`);
+  console.log(`   video_url: ${videoUrl}`);
+  if (existsSync(LOG) && !readFileSync(LOG, "utf8").endsWith("\n")) { const c = readFileSync(LOG, "utf8"); writeFileSync(LOG, c.replace(/\n?$/, "\n")); }
+  const { appendFileSync } = await import("node:fs");
+  appendFileSync(LOG, JSON.stringify({ ts: new Date().toISOString(), skill: "music-forge", purpose: "mp4", provider: "acedata", model: "mp4", audio_id: audioId, cost_credits: null, est_usd: null, seconds: Math.round((Date.now() - started) / 1000), out_dir: outDir }) + "\n");
+  process.exit(0);
+}
+
 if (!final) final = await pollTask({ task_id: taskId, apiKey, onLog: (m) => console.log(m), timeoutMs: 600000 });
 
 // ---------- 下载 ----------
