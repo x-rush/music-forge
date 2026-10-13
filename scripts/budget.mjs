@@ -80,7 +80,7 @@ if (budget?.monthly_credits || budget?.monthly_usd) {
   if (budget.monthly_credits) {
     const pct = (credits(month) / budget.monthly_credits) * 100;
     console.log(`acedata 月预算：${credits(month).toFixed(1)}/${budget.monthly_credits} credits（${pct.toFixed(0)}%）`);
-    if (pct >= 100) console.log("⛔ acedata 已超支：继续生成须用户明示同意");
+    if (pct >= 100) console.log("[BLOCKED:BUDGET] ⛔ acedata 已超支：继续生成须用户明示同意");
     else if (pct >= 80) console.log("⚠️ acedata 已用 ≥80%：生成前提醒余量");
   }
   if (budget.monthly_usd) {
