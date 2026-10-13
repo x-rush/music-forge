@@ -1,5 +1,5 @@
 {
-  "$comment": "请求体 schema 存档（2026-10-13 手工编自 reference/endpoints.md 实测字段表）。acedata 无机器可读 OpenAPI，此文件即 --advanced-json 的权威键名清单——字段变动先改这里再改 CLI。",
+  "$comment": "请求体 schema 存档。来源：官方文档 docs.acedata.cloud/zh-Hans/guides/suno/suno_audios（2026-10-13 逐字段核对）+ reference/endpoints.md 实测记录。acedata 无机器可读 OpenAPI，此文件即 --advanced-json 的权威键名清单——字段变动先改这里再改 CLI。",
   "acedata-suno-generate": {
     "path": "POST https://api.acedata.cloud/suno/audios (action=generate)",
     "properties": {
@@ -12,9 +12,12 @@
       "negative_tags": { "type": "string", "desc": "反向风格标签" },
       "vocal_gender": { "enum": ["f", "m"], "desc": "人声性别（v4.5+）" },
       "duration": { "type": "number", "desc": "10-360 整数，倾向值非硬约束" },
-      "weirdness": { "type": "number", "desc": "0-1" },
-      "style_influence": { "type": "number", "desc": "0-1" },
-      "variety": { "enum": ["off", "normal", "high", "extra", "max"], "desc": "多样性档" },
+      "weirdness": { "type": "number", "desc": "0-1，越大越实验性" },
+      "style_influence": { "type": "number", "desc": "0-1，越大越贴风格标签" },
+      "audio_weight": { "type": "number", "desc": "0-1 音频权重（0 为有效值）；官方文档 2026-10-13 核对补录" },
+      "lyric_prompt": { "type": "string", "desc": "当且仅当 custom=true 且未传 lyric 时生效；官方文档 2026-10-13 核对补录" },
+      "callback_url": { "type": "string", "desc": "回调地址（与 async 轮询二选一）；官方文档 2026-10-13 核对补录" },
+      "variety": { "enum": ["off", "normal", "high", "extra", "max"], "desc": "多样性档；仅 generate 与 add_stem 接受，其他 action 返回 400" },
       "max_mode": { "type": "boolean", "desc": "增强档（需 custom=true），计费 1.12 credits" }
     },
     "required": [],

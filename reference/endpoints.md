@@ -23,7 +23,10 @@
 | `vocal_gender` | `"f"` / `"m"`（4.5+） |
 | `duration` | 10–360 整数，倾向值非硬约束 |
 | `weirdness` / `style_influence` | 0–1 |
-| `variety` | off / normal / high / extra / max |
+| `audio_weight` | 0–1 音频权重（0 为有效值）[docs 2026-10-13 核对补录] |
+| `lyric_prompt` | 当且仅当 custom=true 且未传 lyric 时生效 [docs 2026-10-13 核对补录] |
+| `callback_url` | 回调地址（与 async 轮询二选一）[docs 2026-10-13 核对补录] |
+| `variety` | off / normal / high / extra / max；仅 generate 与 add_stem 接受，其他 action 返回 400 |
 | `max_mode` | 增强档（需 custom=true），计费 1.12 credits |
 
 > 渠道全枚举如上（旧模型 v4.5/v4/v3.5 的歌词/style 上限更低）。**注册表（models.json）只单列 `chirp-v6`（suno-v6）与 `chirp-v6-mini`（suno-v6-mini）**，2026-10-10 用户决定不收 suno-v45；要用旧枚举往 models.json 加一行即可。计费按 action 与模型无关：generate 0.56 / max_mode 1.12 credits。
