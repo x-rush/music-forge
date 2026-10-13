@@ -1,36 +1,679 @@
 {
-  "$comment": "请求体 schema 存档。来源：官方文档 docs.acedata.cloud/zh-Hans/guides/suno/suno_audios（2026-10-13 逐字段核对）+ reference/endpoints.md 实测记录。acedata 无机器可读 OpenAPI，此文件即 --advanced-json 的权威键名清单——字段变动先改这里再改 CLI。",
-  "acedata-suno-generate": {
-    "path": "POST https://api.acedata.cloud/suno/audios (action=generate)",
+  "$comment": "请求体 schema 全量存档（2026-10-13 重建）。来源：①官方文档 docs.acedata.cloud 各端点指南（逐字段核对）②官方 GitHub 文档镜像 github.com/AceDataCloud/SunoAPI（14 篇集成指南，浅克隆逐段提取）③官方 github.com/AceDataCloud/SunoMCP 源码（15 条端点路径逐字确认）④reference/endpoints.md 历次 [live] 实测。acedata 无机器可读 OpenAPI，此文件即 CLI 守门的权威依据——字段变动先改这里再改 CLI。Studio 项目 API（Beta）无稳定契约未收录。",
+  "suno-audios": {
+    "path": "https://api.acedata.cloud/suno/audios",
+    "desc": "单端点多 action：生成/续写/翻唱/拼接/替换段落/分轨/加轨/重制/混搭/采样/音色一致等 21 个 action",
     "properties": {
-      "custom": { "type": "boolean", "desc": "自定义模式开关（与 prompt 二选一）" },
-      "lyric": { "type": "string", "desc": "custom=true 时必带；≤5000 字符（v4.5+）/ ≤3000（v4-）" },
-      "prompt": { "type": "string", "desc": "灵感模式描述，≤500 字符" },
-      "title": { "type": "string", "desc": "≤100（v4.5+）/ ≤80（旧）" },
-      "style": { "type": "string", "desc": "风格标签 ≤1000（v4.5+）/ ≤200（旧）" },
-      "instrumental": { "type": "boolean", "desc": "纯音乐" },
-      "negative_tags": { "type": "string", "desc": "反向风格标签" },
-      "vocal_gender": { "enum": ["f", "m"], "desc": "人声性别（v4.5+）" },
-      "duration": { "type": "number", "desc": "10-360 整数，倾向值非硬约束" },
-      "weirdness": { "type": "number", "desc": "0-1，越大越实验性" },
-      "style_influence": { "type": "number", "desc": "0-1，越大越贴风格标签" },
-      "audio_weight": { "type": "number", "desc": "0-1 音频权重（0 为有效值）；官方文档 2026-10-13 核对补录" },
-      "lyric_prompt": { "type": "string", "desc": "当且仅当 custom=true 且未传 lyric 时生效；官方文档 2026-10-13 核对补录" },
-      "callback_url": { "type": "string", "desc": "回调地址（与 async 轮询二选一）；官方文档 2026-10-13 核对补录" },
-      "variety": { "enum": ["off", "normal", "high", "extra", "max"], "desc": "多样性档；仅 generate 与 add_stem 接受，其他 action 返回 400" },
-      "max_mode": { "type": "boolean", "desc": "增强档（需 custom=true），计费 1.12 credits" }
+      "action": {
+        "desc": "action 名，枚举见 actions 映射"
+      },
+      "model": {
+        "desc": "chirp-v6 / chirp-v6-wild / chirp-v6-mini / chirp-v5-5 / chirp-v5 / chirp-v4-5-plus / chirp-v4-5 / chirp-v4 / chirp-v3-5；remaster 仅 v4.5+/v5"
+      },
+      "prompt": {
+        "type": "string",
+        "desc": "灵感描述 ≤500 字符；generate 灵感模式必填"
+      },
+      "custom": {
+        "type": "boolean",
+        "desc": "自定义模式开关，默认 false"
+      },
+      "lyric": {
+        "type": "string",
+        "desc": "歌词 ≤5000（v4.5+）/ ≤3000（v4-）；custom=true 必带"
+      },
+      "lyric_prompt": {
+        "type": "string",
+        "desc": "当且仅当 custom=true 且未传 lyric 时生效"
+      },
+      "title": {
+        "type": "string",
+        "desc": "≤100（v4.5+）/ ≤80（旧）"
+      },
+      "style": {
+        "type": "string",
+        "desc": "风格标签 ≤1000（v4.5+）/ ≤200（旧）"
+      },
+      "instrumental": {
+        "type": "boolean"
+      },
+      "negative_tags": {
+        "type": "string",
+        "desc": "反向风格标签（custom 模式）"
+      },
+      "vocal_gender": {
+        "enum": [
+          "f",
+          "m"
+        ],
+        "desc": "人声性别（v4.5+，偏好项）"
+      },
+      "duration": {
+        "type": "number",
+        "desc": "10-360 整数，倾向值非硬约束"
+      },
+      "weirdness": {
+        "type": "number",
+        "desc": "0-1，越大越实验性"
+      },
+      "style_influence": {
+        "type": "number",
+        "desc": "0-1，越大越贴风格标签"
+      },
+      "audio_weight": {
+        "type": "number",
+        "desc": "0-1 音频权重（0 为有效值）"
+      },
+      "variety": {
+        "enum": [
+          "off",
+          "normal",
+          "high",
+          "extra",
+          "max"
+        ],
+        "desc": "多样性档；仅 generate 与 add_stem 接受，其他 action 返回 400"
+      },
+      "max_mode": {
+        "type": "boolean",
+        "desc": "增强档（generate 需 custom=true；add_stem 可直接用），计费 1.12 credits"
+      },
+      "audio_id": {
+        "type": "string",
+        "desc": "源歌曲 ID（大部分 action 必填）"
+      },
+      "continue_at": {
+        "type": "number",
+        "desc": ">0 秒；extend/upload_extend 必填"
+      },
+      "persona_id": {
+        "type": "string",
+        "desc": "歌手风格 ID（artist_consistency(_vox) 必填；generate/cover 可带）"
+      },
+      "mashup_audio_ids": {
+        "type": "array",
+        "desc": "两个歌曲 ID；mashup 必填"
+      },
+      "replace_section_start": {
+        "type": "number",
+        "desc": "replace_section 必填"
+      },
+      "replace_section_end": {
+        "type": "number",
+        "desc": "replace_section 必填"
+      },
+      "replace_section_result_mode": {
+        "enum": [
+          "full_song",
+          "candidates"
+        ],
+        "desc": "默认 full_song（返回拼接完整曲）；candidates 返回未拼候选需再 concat"
+      },
+      "underpainting_start": {
+        "type": "number",
+        "desc": "默认 0"
+      },
+      "underpainting_end": {
+        "type": "number",
+        "desc": "必须小于歌曲总时长"
+      },
+      "overpainting_start": {
+        "type": "number",
+        "desc": "默认 0"
+      },
+      "overpainting_end": {
+        "type": "number",
+        "desc": "必须小于歌曲总时长"
+      },
+      "samples_start": {
+        "type": "number",
+        "desc": "samples 必填"
+      },
+      "samples_end": {
+        "type": "number",
+        "desc": "samples 必填"
+      },
+      "stem_type": {
+        "type": "string",
+        "desc": "add_stem/extract_stem 必填（如 bass/drums/vocals）"
+      },
+      "audio_format": {
+        "enum": [
+          "mp3"
+        ],
+        "desc": "extract_stem/sounds 当前仅支持 mp3"
+      },
+      "speed_multiplier": {
+        "type": "number",
+        "desc": "0.25-4；adjust_speed 必填"
+      },
+      "keep_pitch": {
+        "type": "boolean",
+        "desc": "adjust_speed 变速不变调"
+      },
+      "sound": {
+        "type": "string",
+        "desc": "音效描述；sounds 必填"
+      },
+      "sound_type": {
+        "enum": [
+          "one-shot",
+          "loop"
+        ],
+        "desc": "sounds 必填"
+      },
+      "bpm": {
+        "type": "number",
+        "desc": "sounds 可选"
+      },
+      "key": {
+        "type": "string",
+        "desc": "sounds 可选"
+      },
+      "audio_urls": {
+        "type": "array",
+        "desc": "1-4 个公开可访问 URL；inspo 必填（版权曲库匹配可能被拒）"
+      },
+      "variation_category": {
+        "enum": [
+          "high",
+          "normal",
+          "subtle"
+        ],
+        "desc": "remaster 变化幅度（v5+）"
+      },
+      "callback_url": {
+        "type": "string",
+        "desc": "回调地址（与 async 轮询二选一）"
+      },
+      "async": {
+        "type": "boolean",
+        "desc": "true 立即返回 task_id 走 /suno/tasks 轮询"
+      }
     },
-    "required": [],
-    "provider_added": { "action": "generate", "model": "chirp-v6 系枚举见 models.json", "async": "true（2026-10-10 起统一异步）" }
+    "actions": {
+      "generate": {
+        "required": [],
+        "cond": "灵感模式必填 prompt；自定义模式必填 custom=true+lyric",
+        "cost_credits": "0.56（max_mode 1.12）"
+      },
+      "extend": {
+        "required": [
+          "audio_id",
+          "continue_at"
+        ],
+        "cond": "instrumental=false 时必填 lyric",
+        "cost_credits": null
+      },
+      "upload_extend": {
+        "required": [
+          "audio_id",
+          "continue_at"
+        ],
+        "cond": "audio_id 须来自 /suno/upload；其余同 extend",
+        "cost_credits": null
+      },
+      "concat": {
+        "required": [
+          "audio_id"
+        ],
+        "cond": "audio_id 须为最后一个续写/替换片段",
+        "cost_credits": null
+      },
+      "cover": {
+        "required": [
+          "audio_id"
+        ],
+        "cond": null,
+        "cost_credits": null
+      },
+      "upload_cover": {
+        "required": [
+          "audio_id"
+        ],
+        "cond": "audio_id 须为上传音乐",
+        "cost_credits": null
+      },
+      "replace_section": {
+        "required": [
+          "audio_id",
+          "lyric",
+          "prompt",
+          "replace_section_start",
+          "replace_section_end",
+          "model"
+        ],
+        "cond": "lyric=整首完整歌词；prompt=替换段新词",
+        "cost_credits": null
+      },
+      "stems": {
+        "required": [
+          "audio_id"
+        ],
+        "cond": "人声/伴奏二分离",
+        "cost_credits": null
+      },
+      "all_stems": {
+        "required": [
+          "audio_id"
+        ],
+        "cond": "全轨分离（12 轨；其 ID 可喂 /suno/midi）",
+        "cost_credits": null
+      },
+      "add_stem": {
+        "required": [
+          "audio_id",
+          "stem_type"
+        ],
+        "cond": "计费 0.672（max_mode 1.344）；variety 可用",
+        "cost_credits": "0.672"
+      },
+      "extract_stem": {
+        "required": [
+          "audio_id",
+          "stem_type"
+        ],
+        "cond": "[live] 返回 2 组候选×(目标轨+互补轨)",
+        "cost_credits": "1.12"
+      },
+      "sounds": {
+        "required": [
+          "sound",
+          "sound_type"
+        ],
+        "cond": null,
+        "cost_credits": "0.112"
+      },
+      "adjust_speed": {
+        "required": [
+          "audio_id",
+          "speed_multiplier",
+          "title"
+        ],
+        "cond": "speed_multiplier 0.25-4",
+        "cost_credits": "0.28"
+      },
+      "artist_consistency": {
+        "required": [
+          "audio_id",
+          "persona_id"
+        ],
+        "cond": "persona_id 来自 /suno/persona 或 /suno/voices",
+        "cost_credits": null
+      },
+      "artist_consistency_vox": {
+        "required": [
+          "audio_id",
+          "persona_id"
+        ],
+        "cond": "Persona-v2-vox 必须用此 action 名",
+        "cost_credits": null
+      },
+      "underpainting": {
+        "required": [
+          "audio_id"
+        ],
+        "cond": "audio_id 须为上传清唱；给清唱配伴奏",
+        "cost_credits": null
+      },
+      "overpainting": {
+        "required": [
+          "audio_id"
+        ],
+        "cond": "必须 custom=true+lyric（给伴奏加人声词）",
+        "cost_credits": null
+      },
+      "remaster": {
+        "required": [
+          "audio_id"
+        ],
+        "cond": "model 仅 v4.5+/v5；不可跨账号",
+        "cost_credits": null
+      },
+      "mashup": {
+        "required": [
+          "mashup_audio_ids"
+        ],
+        "cond": "两首参考曲生成混搭",
+        "cost_credits": null
+      },
+      "samples": {
+        "required": [
+          "audio_id",
+          "samples_start",
+          "samples_end"
+        ],
+        "cond": "单音频区间取样",
+        "cost_credits": null
+      },
+      "inspo": {
+        "required": [
+          "audio_urls"
+        ],
+        "cond": "1-4 个参考音频须公开可访问",
+        "cost_credits": null
+      }
+    },
+    "provider_added": {
+      "async": "v1 统一异步（2026-10-10 起）",
+      "title": "CLI 自动补默认标题"
+    }
+  },
+  "suno-lyrics": {
+    "path": "https://api.acedata.cloud/suno/lyrics",
+    "desc": "歌词生成（不想自己写词时先出词再进 custom 生成）",
+    "properties": {
+      "prompt": {
+        "type": "string",
+        "desc": "歌词主题描述，必填"
+      },
+      "model": {
+        "enum": [
+          "default",
+          "remi-v1"
+        ],
+        "desc": "默认 default"
+      }
+    },
+    "required": [
+      "prompt"
+    ],
+    "response": "data.text=歌词 / data.title / data.tags（推荐曲风标签）；免费/计费未公开"
+  },
+  "suno-mashup-lyrics": {
+    "path": "https://api.acedata.cloud/suno/mashup-lyrics",
+    "desc": "两首歌的歌词混搭出新词",
+    "properties": {
+      "lyrics_a": {
+        "type": "string",
+        "desc": "第一首歌歌词，必填"
+      },
+      "lyrics_b": {
+        "type": "string",
+        "desc": "第二首歌歌词，必填"
+      }
+    },
+    "required": [
+      "lyrics_a",
+      "lyrics_b"
+    ],
+    "response": "data.text=混搭歌词 / data.title / data.tags"
+  },
+  "suno-persona": {
+    "path": "https://api.acedata.cloud/suno/persona",
+    "desc": "从已生成歌曲创建歌手风格（persona_id）",
+    "properties": {
+      "audio_id": {
+        "type": "string",
+        "desc": "已生成歌曲 ID，必填"
+      },
+      "name": {
+        "type": "string",
+        "desc": "风格名称"
+      },
+      "description": {
+        "type": "string",
+        "desc": "风格描述"
+      }
+    },
+    "required": [
+      "audio_id"
+    ],
+    "response": "data.persona_id → artist_consistency(_vox) 使用"
+  },
+  "suno-voices": {
+    "path": "https://api.acedata.cloud/suno/voices",
+    "desc": "从外部人声音频创建声音角色（克隆）",
+    "properties": {
+      "audio_url": {
+        "type": "string",
+        "desc": "WAV/MP3，10-240 秒，清晰单人讲话/演唱；忌噪音/伴奏/多说话人，必填"
+      },
+      "name": {
+        "type": "string",
+        "desc": "名称（响应实际 name 由系统生成）"
+      },
+      "description": {
+        "type": "string",
+        "desc": "描述"
+      }
+    },
+    "required": [
+      "audio_url"
+    ],
+    "response": "data.persona_id（私有，不支持跨账号）；下游 generate/cover 传 persona_id；仅 chirp-v4.5+，不支持 chirp-v4；失败请求不计费"
+  },
+  "suno-wav": {
+    "path": "https://api.acedata.cloud/suno/wav",
+    "desc": "歌曲转无损 WAV",
+    "properties": {
+      "audio_id": {
+        "type": "string",
+        "desc": "必填"
+      },
+      "callback_url": {
+        "type": "string",
+        "desc": "可选回调"
+      }
+    },
+    "required": [
+      "audio_id"
+    ],
+    "response": "data[].file_url=WAV CDN 地址（非永久，及时下载）"
+  },
+  "suno-mp3": {
+    "path": "https://api.acedata.cloud/suno/mp3",
+    "desc": "取歌曲 MP3 直链（独立导出任务，不改原音频 ID）",
+    "properties": {
+      "audio_id": {
+        "type": "string",
+        "desc": "必填"
+      },
+      "async": {
+        "type": "boolean",
+        "desc": "true 返回 task_id 轮询"
+      },
+      "callback_url": {
+        "type": "string",
+        "desc": "可选回调"
+      }
+    },
+    "required": [
+      "audio_id"
+    ],
+    "response": "data[0].file_url；CDN 模式 https://cdn.acedata.cloud/suno/{audio_id}.mp3；持久化失败回退原始媒体地址"
+  },
+  "suno-mp4": {
+    "path": "https://api.acedata.cloud/suno/mp4",
+    "desc": "歌曲转可视化 MP4",
+    "properties": {
+      "audio_id": {
+        "type": "string",
+        "desc": "必填"
+      }
+    },
+    "required": [
+      "audio_id"
+    ],
+    "response": "data.video_url；[live] 响应形状特殊（data 是对象非数组），actions.mjs 有独立分支"
+  },
+  "suno-midi": {
+    "path": "https://api.acedata.cloud/suno/midi",
+    "desc": "歌曲转 MIDI 音符数据",
+    "properties": {
+      "audio_id": {
+        "type": "string",
+        "desc": "必填；用 all_stems 分轨后的歌曲 ID"
+      },
+      "callback_url": {
+        "type": "string",
+        "desc": "可选回调"
+      }
+    },
+    "required": [
+      "audio_id"
+    ],
+    "response": "data[].instruments[].notes[]（pitch/start 秒/end 秒/velocity）"
+  },
+  "suno-style": {
+    "path": "https://api.acedata.cloud/suno/style",
+    "desc": "风格提示词优化（prompt → upsampled_tags）",
+    "properties": {
+      "prompt": {
+        "type": "string",
+        "desc": "唯一输入参数，必填"
+      }
+    },
+    "required": [
+      "prompt"
+    ],
+    "response": "data.upsampled_tags=优化后风格参数，可直接喂 generate 的 style"
+  },
+  "suno-vox": {
+    "path": "https://api.acedata.cloud/suno/vox",
+    "desc": "从歌曲中提取人声段（供 Persona 用）",
+    "properties": {
+      "audio_id": {
+        "type": "string",
+        "desc": "参考歌曲 ID，必填"
+      },
+      "vocal_start": {
+        "type": "number",
+        "desc": "人声起始秒"
+      },
+      "vocal_end": {
+        "type": "number",
+        "desc": "人声结束秒"
+      }
+    },
+    "required": [
+      "audio_id"
+    ],
+    "response": "data.id=vox_audio_id → persona 调用使用；data.vocal_audio_url=提取的人声 MP3"
+  },
+  "suno-upload": {
+    "path": "https://api.acedata.cloud/suno/upload",
+    "desc": "上传外部音频换 audio_id（解锁 upload_extend/upload_cover/underpainting/overpainting）",
+    "properties": {
+      "audio_url": {
+        "type": "string",
+        "desc": "公开可访问音频地址，必填"
+      },
+      "mode": {
+        "enum": [
+          "standard",
+          "enhanced"
+        ],
+        "desc": "[live] enhanced 异步深度分析（返回词/风格标签），1.87 credits；standard 同步 0.06"
+      },
+      "name": {
+        "type": "string",
+        "desc": "enhanced 必填（1-100 字符）"
+      }
+    },
+    "required": [
+      "audio_url"
+    ],
+    "response": "[live] data 是对象含 audio_id（非数组）"
+  },
+  "suno-tasks": {
+    "path": "https://api.acedata.cloud/suno/tasks",
+    "desc": "异步任务查询",
+    "properties": {
+      "id": {
+        "type": "string",
+        "desc": "task_id；[live 踩坑] 唯一正确键名是 id，task_id/GET/query 均无效"
+      }
+    },
+    "required": [
+      "id"
+    ],
+    "response": "{ type, response: { success, task_id, data: [...] }, finished_at }；假 id 返回 200 {}"
+  },
+  "suno-timing": {
+    "path": "https://api.acedata.cloud/suno/timing",
+    "desc": "词级时间轴对齐（免费）",
+    "properties": {
+      "audio_id": {
+        "type": "string",
+        "desc": "必填"
+      },
+      "lyric": {
+        "type": "string",
+        "desc": "歌词全文，必填"
+      }
+    },
+    "required": [
+      "audio_id",
+      "lyric"
+    ],
+    "response": "data.aligned_words[]（word/start_s/end_s/p_align）；已知坑：间奏被吞进句尾 end_s"
+  },
+  "suno-custom-models": {
+    "path": "https://api.acedata.cloud/suno/custom-models",
+    "desc": "专属音乐模型（Beta）：用 6-24 个自有授权音频建可复用模型；action 式单端点",
+    "properties": {
+      "action": {
+        "enum": [
+          "create",
+          "retrieve",
+          "retrieve_batch"
+        ],
+        "desc": "create=建模型 / retrieve=查状态 / retrieve_batch=分页列表"
+      },
+      "name": {
+        "type": "string",
+        "desc": "create 必填"
+      },
+      "audio_urls": {
+        "type": "array",
+        "desc": "create 必填，6-24 个自有/授权音频 URL"
+      },
+      "id": {
+        "type": "string",
+        "desc": "retrieve 必填（CUSTOM_MODEL_ID）"
+      },
+      "status": {
+        "type": "string",
+        "desc": "retrieve_batch 过滤（ready 才可用）"
+      },
+      "limit": {
+        "type": "number",
+        "desc": "retrieve_batch 分页"
+      },
+      "offset": {
+        "type": "number",
+        "desc": "retrieve_batch 分页"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "cond": "create 需 Idempotency-Key 请求头（重试复用同 key）；仅成功创建计费；模型按 Suno 应用隔离",
+    "response": "create 立即返回 id+task_id+queued；retrieve 看 status=ready"
   },
   "useapi-mureka-create": {
-    "path": "POST https://api.useapi.net/v1/mureka/music/create",
+    "path": "https://api.useapi.net/v1/mureka/music/create",
     "properties": {
-      "prompt": { "type": "string", "desc": "灵感描述（与 lyrics 二选一）" },
-      "lyrics": { "type": "string", "desc": "自定义歌词" },
-      "title": { "type": "string" },
-      "instrumental": { "type": "boolean", "desc": "provider 据此路由 create-instrumental" },
-      "model": { "type": "string", "desc": "mureka 模型枚举" }
+      "prompt": {
+        "type": "string",
+        "desc": "灵感描述（与 lyrics 二选一）"
+      },
+      "lyrics": {
+        "type": "string",
+        "desc": "自定义歌词"
+      },
+      "title": {
+        "type": "string"
+      },
+      "instrumental": {
+        "type": "boolean",
+        "desc": "provider 据此路由 create-instrumental"
+      },
+      "model": {
+        "type": "string",
+        "desc": "mureka 模型枚举"
+      }
     },
     "required": []
   }

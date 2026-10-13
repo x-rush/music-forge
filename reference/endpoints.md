@@ -1,8 +1,32 @@
-# 端点契约备忘（整理自两边官方文档，2026-10-10）；**2026-10-10 acedata 统一异步化（async:true + /suno/tasks 轮询）**
+# 端点契约备忘（2026-10-13 全量重建：官方文档 + GitHub 文档镜像 SunoAPI + SunoMCP 源码交叉确认）；**2026-10-10 acedata 统一异步化（async:true + /suno/tasks 轮询）**
 
 > 状态标记：`[docs]` = 文档核对未实测；`[live]` = 真实调用验证过。实测后把本文件对应条目升级并写日期。
+> **全量契约权威文件：`reference/endpoint-schemas.json`**（本文件是人读叙事版；CLI 守门逐键对照 schema 文件）。
 
-## AceDataCloud · Suno 兼容中转 [docs]
+## AceDataCloud Suno 通道 · 15 端点全量清单（2026-10-13，路径经 SunoMCP 源码逐字确认）
+
+| 端点 | 路径 | 用途 | v1 接入 |
+|---|---|---|---|
+| Audios | `POST /suno/audios` | 单端点 21 action：生成/续写/翻唱/拼接/换段/分轨/加轨/重制/混搭/采样/音色一致 | ✅ gen-music（generate）+ actions.mjs（extend/speed/replace-section/sfx/any） |
+| Lyrics | `POST /suno/lyrics` | 词生成（prompt + model: default\|remi-v1） | ✅ actions.mjs api |
+| MashupLyrics | `POST /suno/mashup-lyrics` | 两首歌歌词混搭（lyrics_a + lyrics_b） | ✅ actions.mjs api |
+| Persona | `POST /suno/persona` | 歌曲→歌手风格 persona_id | ✅ actions.mjs api |
+| Voices | `POST /suno/voices` | 外部人声（10-240s 单人声）→声音角色，仅 v4.5+ | ✅ actions.mjs api |
+| Vox | `POST /suno/vox` | 歌曲中提取人声段（vocal_start/end 秒） | ✅ actions.mjs api |
+| Style | `POST /suno/style` | 风格提示词优化 → upsampled_tags | ✅ actions.mjs api |
+| Upload | `POST /suno/upload` | 外部音频→audio_id（standard 0.06cr / enhanced 1.87cr [live]） | ✅ actions.mjs upload |
+| Wav | `POST /suno/wav` | 转 WAV（data[].file_url，非永久及时下载） | ✅ actions.mjs api |
+| MP3 | `POST /suno/mp3` | 取 MP3 直链（async/callback_url） | ✅ actions.mjs api |
+| MP4 | `POST /suno/mp4` | 转可视化 MP4（data.video_url，[live] 响应形状特殊） | ✅ actions.mjs mp4 |
+| MIDI | `POST /suno/midi` | 转 MIDI（用 all_stems 分轨后的 id；返回乐器+音符数组） | ✅ actions.mjs api |
+| Tasks | `POST /suno/tasks` | 异步轮询（键名唯一为 `id` [live]） | ✅ 全管线 |
+| Timing | `POST /suno/timing` | 词级时间轴对齐，免费 [live] | ✅ timing.mjs |
+| Custom Models | `POST /suno/custom-models` | 专属音乐模型（Beta，create/retrieve/retrieve_batch，6-24 音频，create 需 Idempotency-Key 头） | ✅ actions.mjs api |
+
+- **Studio 项目 API（Beta）未接入**：无稳定公开契约；官方 README 实录多个渲染失败形态（`studio_audio_unavailable` / commit `bad_request` 且原轨不变），等契约稳定再评估。
+- 计费已公开项：generate 0.56 / max_mode 1.12 / add_stem 0.672（max 1.344）/ extract_stem 1.12 / sounds 0.112 / adjust_speed 0.28 / upload 0.06·enhanced 1.87；其余未公开（响应实扣优先）。
+
+## AceDataCloud · Suno Audios（action 级明细）
 
 - 端点：`POST https://api.acedata.cloud/suno/audios`（单端点，`action` 区分操作）
 - 鉴权：`Authorization: Bearer <平台token>` + `accept: application/json` + `content-type: application/json`

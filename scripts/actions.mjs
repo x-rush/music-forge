@@ -27,7 +27,28 @@ const safeName = (s, fallback) => { const n = String(s ?? fallback).replace(/[\\
 const readTxt = (p) => p ? readFileSync(resolve(p), "utf8") : undefined;
 
 const EST_CREDITS = { extend: null, speed: 0.28, "replace-section": null, sfx: 0.112, upload: 0.06, "upload-enhanced": 1.87 };
-const ACTIONS = ["extend", "speed", "replace-section", "sfx", "upload", "mp4", "any"];
+const ACTIONS = ["extend", "speed", "replace-section", "sfx", "upload", "mp4", "api", "any"];
+// [live 2026-10-13] schema 即守门：15 端点全量契约（来源官方文档镜像 SunoAPI + SunoMCP 源码 + live 实测，见文件头）
+const SCHEMAS = JSON.parse(readFileSync(join(SKILL, "reference", "endpoint-schemas.json"), "utf8"));
+
+// action 请求体逐键守门：未知键/枚举违反硬错，action 必填缺失硬错，条件必填警告
+function guardBody(actionName, fields) {
+  const def = SCHEMAS["suno-audios"];
+  const pool = def.properties ?? {};
+  const act = def.actions?.[actionName];
+  if (!act && actionName !== "mp4") die(`未登记的 action "${actionName}"，可用：${Object.keys(def.actions ?? {}).join(" / ")}（或独立端点用 api 子命令）`);
+  const unknown = Object.keys(fields).filter((k) => !(k in pool));
+  if (unknown.length) die(`请求体含 schema 中不存在的字段: ${unknown.join(", ")}（平台可能静默忽略→语义退化）\n   全部合法字段: ${Object.keys(pool).join(", ")}\n   权威清单: reference/endpoint-schemas.json`);
+  for (const [k, v] of Object.entries(fields)) {
+    const e = pool[k]?.enum;
+    if (e && v != null && !e.includes(v) && !e.includes(String(v))) die(`字段 ${k}=${JSON.stringify(v)} 不在枚举 ${JSON.stringify(e)} 内`);
+  }
+  if (act) {
+    const missing = (act.required ?? []).filter((k) => fields[k] == null || fields[k] === "");
+    if (missing.length) die(`action ${actionName} 缺必填字段: ${missing.join(", ")}`);
+    if (act.cond) console.error(`ℹ️ ${actionName} 契约提示: ${act.cond}`);
+  }
+}
 
 if (process.argv.includes("--help") || !process.argv[2]) {
   console.log(`music-forge actions — acedata 高频操作（异步 + 轮询 + resume）
@@ -37,7 +58,8 @@ if (process.argv.includes("--help") || !process.argv[2]) {
   replace-section   段落替换（只改指定秒数范围，省 credits）：--audio-id --lyric <全词txt> --section-prompt "<新段落>" --start <秒> --end <秒> [--mode full_song]
   sfx               文本生成音效（0.112cr）：--sound "<描述>" [--type one-shot|loop] [--bpm N] [--key <key>]
   upload            上传外部音频拿 audio_id（standard 0.06cr 同步 / enhanced 1.87cr 异步，解锁 underpainting/overpainting/upload_extend）：--audio-url <公网地址> [--mode enhanced] [--name <名>]
-  any               任意 acedata action 全参数透传：--action <名> --data '{字段:值,…}'（覆盖全量 action：cover/concat/remaster/mashup/samples/inspo/all_stems/add_stem/upload_extend/upload_cover/underpainting/overpainting/remaster/artist_consistency…）
+  api               任意 /suno/* 端点全量透传（schema 守门）：--endpoint <suno-lyrics|suno-wav|suno-mp3|suno-midi|suno-style|suno-persona|suno-voices|suno-vox|suno-mashup-lyrics|suno-custom-models|…> --data '{字段:值,…}'
+  any               /suno/audios 的 21 个 action 全参数透传（schema 守门）：--action <名> --data '{字段:值,…}'（cover/concat/remaster/mashup/samples/inspo/all_stems/add_stem/upload_extend/upload_cover/underpainting/overpainting/artist_consistency…）
 
 通用：--resume <task_id>（中断恢复）· --out <dir> · 全部走异步提交 + 轮询`);
   process.exit(0);
@@ -72,6 +94,8 @@ if (!apiKey) die(`缺少鉴权：设环境变量 ${authEnvNames.join(" 或 ")}�
 const resumeTask = arg("resume");
 const audioId = arg("audio-id");
 let body;
+let apiPath = null; // api 子命令的端点路径（其余 action 固定 /suno/audios 或 /suno/mp4）
+let apiFields = null; // api 子命令的 --data 解析结果
 const title = arg("title") ?? `${action}-${new Date().toISOString().slice(5, 16)}`;
 if (resumeTask) {
   body = null; // resume 只轮询
@@ -123,11 +147,31 @@ if (resumeTask) {
   const { appendFileSync } = await import("node:fs");
   appendFileSync(LOG, JSON.stringify({ ts: new Date().toISOString(), skill: "music-forge", purpose: "upload", provider: "acedata", model: "upload/" + mode, audio_id: rec.audio_id, cost_credits: null, est_credits: mode === "enhanced" ? 1.87 : 0.06, seconds: Math.round((Date.now() - started) / 1000), out_dir: outDir }) + "\n");
   process.exit(0);
+} else if (action === "api") {
+  // [live 2026-10-13] 通用端点透传：15 个 /suno/* 端点全量可达，逐键 schema 守门
+  const epKey = arg("endpoint") ?? die("api 需要 --endpoint <suno-xxx>（键名见 reference/endpoint-schemas.json）");
+  const ep = SCHEMAS[epKey];
+  if (!ep?.path?.includes("api.acedata.cloud")) die(`--endpoint "${epKey}" 未登记或非 acedata 端点。可用：${Object.keys(SCHEMAS).filter((k) => k.startsWith("suno-") && String(SCHEMAS[k].path).includes("api.acedata.cloud")).join(", ")}`);
+  const dataJson = arg("data") ?? die("api 需要 --data '{…}'（请求体业务字段，JSON 对象）");
+  try { apiFields = JSON.parse(dataJson); } catch { die("--data 不是合法 JSON"); }
+  const pool = ep.properties ?? {};
+  const unknown = Object.keys(apiFields).filter((k) => !(k in pool));
+  if (unknown.length) die(`请求体含 ${epKey} schema 中不存在的字段: ${unknown.join(", ")}\n   该端点全部字段: ${Object.keys(pool).join(", ")}\n   权威清单: reference/endpoint-schemas.json`);
+  for (const [k, v] of Object.entries(apiFields)) {
+    const e = pool[k]?.enum;
+    if (e && v != null && !e.includes(v) && !e.includes(String(v))) die(`字段 ${k}=${JSON.stringify(v)} 不在枚举 ${JSON.stringify(e)} 内`);
+  }
+  const missing = (ep.required ?? []).filter((k) => apiFields[k] == null || apiFields[k] === "");
+  if (missing.length) die(`${epKey} 缺必填字段: ${missing.join(", ")}${ep.cond ? `\n   契约提示: ${ep.cond}` : ""}`);
+  apiPath = ep.path.replace(/^[A-Z]+\s+/, ""); // 防御性剥离方法前缀（schema 规范式为纯 URL）
+  body = apiFields;
+  console.log(`📤 ${epKey} → POST ${apiPath}`);
 } else if (action === "any") {
   const acedataAction = arg("action") ?? die("any 需要 --action <acedata_action_name>");
   const dataJson = arg("data") ?? die("any 需要 --data '{…}'（action 的全部业务字段，JSON 对象）");
   let fields;
   try { fields = JSON.parse(dataJson); } catch { die("--data 不是合法 JSON"); }
+  guardBody(acedataAction, fields); // schema 逐键守门（未知键/枚举/必填）
   body = { action: acedataAction, ...fields, async: true, title: arg("title") ?? acedataAction + "-" + new Date().toISOString().slice(5, 16) };
 } else if (action === "extend") {
   if (!audioId) die("extend 需要 --audio-id");
@@ -154,15 +198,21 @@ if (resumeTask) {
   if (arg("bpm")) body.bpm = Number(arg("bpm"));
   if (arg("key")) body.key = arg("key");
 }
+if (body && action !== "upload" && action !== "api") guardBody(body.action ?? action, body); // 命名 action 的代码构造体同样过守门
 
 // ---------- 提交 / 恢复 ----------
 let taskId = resumeTask ?? null;
 let final = null;
 if (resumeTask) {
   console.log(`♻️ 重取 ${action} 任务 ${resumeTask}…`);
+} else if (hasFlag("dry-run")) { // 全量校验通过，打印请求计划即退出（不碰网络）
+  const submitUrl = action === "mp4" ? "https://api.acedata.cloud/suno/mp4" : action === "api" ? apiPath : "https://api.acedata.cloud/suno/audios";
+  console.log(`🧪 DRY RUN — 校验通过，未提交。请求计划:`);
+  console.log(JSON.stringify({ endpoint: submitUrl, body }, null, 1));
+  process.exit(0);
 } else {
   console.log(`🎚️ ${action} 提交（异步）…`);
-  const submitUrl = action === "mp4" ? "https://api.acedata.cloud/suno/mp4" : "https://api.acedata.cloud/suno/audios";
+  const submitUrl = action === "mp4" ? "https://api.acedata.cloud/suno/mp4" : action === "api" ? apiPath : "https://api.acedata.cloud/suno/audios";
   const res = await fetch(submitUrl, {
     method: "POST",
     headers: { accept: "application/json", "content-type": "application/json", authorization: `Bearer ${apiKey}` },
@@ -217,15 +267,18 @@ if (action === "mp4") {
 
 if (!final) final = await pollTask({ task_id: taskId, apiKey, onLog: (m) => console.log(m), timeoutMs: 600000 });
 
-// ---------- 下载 ----------
-const items = (Array.isArray(final.data) ? final.data : []).filter((t) => t.audio_url);
-if (!items.length) die(`响应无可用音轨: ${JSON.stringify(final).slice(0, 300)}`);
+// ---------- 下载（api 透传产物可能是 audio_url / file_url / video_url，按扩展名落盘） ----------
+const items = (Array.isArray(final.data) ? final.data : [])
+  .map((t) => ({ ...t, _url: t.audio_url ?? t.file_url ?? t.video_url ?? t.url }))
+  .filter((t) => t._url);
+if (!items.length) die(`响应无可用产物: ${JSON.stringify(final).slice(0, 300)}`);
 const stampTs = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 const outDir = resolve(arg("out") || `action-output/${stampTs}-${action}`);
 mkdirSync(outDir, { recursive: true });
 for (const [i, t] of items.entries()) {
-  const dest = join(outDir, `${String(i + 1).padStart(2, "0")}-${safeName(t.title, action)}.mp3`);
-  const r = await fetch(t.audio_url, { signal: AbortSignal.timeout(120000) });
+  const ext = (String(t._url).match(/\.(mp3|wav|mp4|midi)([?#]|$)/i)?.[1] ?? "mp3").toLowerCase();
+  const dest = join(outDir, `${String(i + 1).padStart(2, "0")}-${safeName(t.title, action)}.${ext}`);
+  const r = await fetch(t._url, { signal: AbortSignal.timeout(120000) });
   if (!r.ok) { console.error(`⚠️ 下载失败 HTTP ${r.status}: ${t.title ?? ""}`); continue; }
   writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
   console.log(`💾 ${dest}`);

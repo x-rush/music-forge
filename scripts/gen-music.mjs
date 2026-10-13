@@ -76,7 +76,7 @@ const negativeTags = arg("negative-tags");
   // （防自造参数名被 API 静默忽略→参数不生效还照常扣费；权威清单 reference/endpoint-schemas.json）
   if (advancedJson) {
     const SCHEMAS = JSON.parse(readFileSync(join(SKILL, "reference", "endpoint-schemas.json"), "utf8"));
-    const entry = SCHEMAS[providerName === "acedata" ? "acedata-suno-generate" : "useapi-mureka-create"];
+    const entry = SCHEMAS[providerName === "acedata" ? "suno-audios" : "useapi-mureka-create"];
     const props = entry?.properties ?? {};
     const unknown = Object.keys(advancedJson).filter((k) => !(k in props));
     if (unknown.length) die(`--advanced-json 含未登记参数名: ${unknown.join(", ")}\n   ${providerName} 已知参数: ${Object.keys(props).join(", ")}\n   权威清单: reference/endpoint-schemas.json`);

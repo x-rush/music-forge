@@ -16,7 +16,7 @@ description: 多通道 AI 音乐生成引擎（Suno via AceDataCloud + Mureka vi
 - `<skill>/scripts/gen-music.js` — 生成 CLI（异步提交 → 轮询 → 下载 → 记账；支持 `--resume` 中断恢复）
 - `<skill>/scripts/actions.js` — 高频四连（extend 续写 / speed 变速不变调 / replace-section 段落替换 / sfx 音效），统一异步+轮询+resume
 - `<skill>/scripts/stems.js` — 音轨分离（extract_stem：有词歌 → 人声轨 + 纯伴奏 BGM，1.12 credits；支持 `--resume`）
-- `<skill>/scripts/actions.js` — 高频四连（extend / speed 变速不变调 / replace-section / sfx 音效）+ upload 上传外部音频（解锁 underpainting 哼唱配伴奏等）
+- `<skill>/scripts/actions.js` — 高频四连（extend / speed 变速不变调 / replace-section / sfx 音效）+ upload 上传外部音频（解锁 underpainting 哼唱配伴奏等）+ `any`（/suno/audios 21 个 action 全参数透传）+ `api`（15 个 /suno/* 端点全量透传：歌词/混搭词/persona/voices/vox/style/wav/mp3/midi/custom-models…）；any/api 均逐键 schema 守门（`reference/endpoint-schemas.json`），支持 `--dry-run` 预检
 - `<skill>/scripts/timing.js` — 歌词词级时间轴对齐（/suno/timing：音频 + 官方歌词 → aligned_words + LRC，免费）
 - `<skill>/scripts/budget.js` — 花费报表 + 双通道月度预算控制
 - `<skill>/providers/` — 渠道实现（acedata = 异步提交 + 任务轮询；useapi = 提交 + 轮询）
