@@ -49,7 +49,7 @@ if (process.argv.includes("--help") || !process.argv[2]) {
   --style-influence 0-1  style 标签遵循度（要贴标签 0.6+）
   --variety <档>      候选多样性 off|normal|high|extra|max
   --max-mode          增强档：更长更完整，1.12 credits（普通 0.56）
-  --advanced-json <p> 原样合并进请求体的 JSON 文件（长尾参数逃生口）
+  --advanced-json <p> 合并进请求体的 JSON 文件（键名逐个对照 reference/endpoint-schemas.json 校验，未知键硬报错）
   --out <dir>         输出目录（默认 ./music-output/<时间戳>-<别名>/）
   --report            查看账本报表`);
   process.exit(0);
@@ -71,7 +71,16 @@ const instrumental = hasFlag("instrumental");
 const voice = arg("voice");
 const duration = arg("duration") ? Number(arg("duration")) : undefined;
 const negativeTags = arg("negative-tags");
-const advancedJson = arg("advanced-json") ? JSON.parse(readFileSync(resolve(arg("advanced-json")), "utf8")) : undefined;
+  const advancedJson = arg("advanced-json") ? JSON.parse(readFileSync(resolve(arg("advanced-json")), "utf8")) : undefined;
+  // [live 2026-10-13] advanced-json 键名守门：对照 schema 存档逐键校验，未知键硬错
+  // （防自造参数名被 API 静默忽略→参数不生效还照常扣费；权威清单 reference/endpoint-schemas.json）
+  if (advancedJson) {
+    const SCHEMAS = JSON.parse(readFileSync(join(SKILL, "reference", "endpoint-schemas.json"), "utf8"));
+    const entry = SCHEMAS[providerName === "acedata" ? "acedata-suno-generate" : "useapi-mureka-create"];
+    const props = entry?.properties ?? {};
+    const unknown = Object.keys(advancedJson).filter((k) => !(k in props));
+    if (unknown.length) die(`--advanced-json 含未登记参数名: ${unknown.join(", ")}\n   ${providerName} 已知参数: ${Object.keys(props).join(", ")}\n   权威清单: reference/endpoint-schemas.json`);
+  }
 const resumeJob = arg("resume");
 if (!resumeJob && !prompt && !lyrics) die("缺 --prompt 或 --lyrics / --lyrics-file（总得告诉它写什么歌）");
 
@@ -178,7 +187,9 @@ if (resumeJob) {
     die(`--resume 暂不支持 ${providerName} 通道`);
   }
 } else {
-  result = await provider.generate({ model: channel, endpoint: channel.endpoint, params: buildParams(), apiKey, onLog });
+  const params = buildParams(); // 含 advanced-json 键名守门
+  console.log(`📤 ${channel.endpoint} ← [${Object.keys(params).join(", ")}]`);
+  result = await provider.generate({ model: channel, endpoint: channel.endpoint, params, apiKey, onLog });
 }
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -196,6 +207,7 @@ if (resumeJob) {
     ts: new Date().toISOString(), skill: "music-forge", provider: providerName,
     model: alias, model_id: channel.model_id, task_id: result.task_id ?? null,
     tracks: files.length, cost_credits: result.cost_credits ?? null,
+    param_keys: resumeJob ? undefined : Object.keys(buildParams()),
     est_credits: !resumeJob && result.cost_credits == null ? (channel.price_credits?.generate ?? null) : null,
     est_usd: providerName === "useapi" ? (channel.price?.per_song_usd_est ?? 0) * files.length : null,
     seconds: Math.round((Date.now() - started) / 1000),
