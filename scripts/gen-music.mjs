@@ -80,6 +80,12 @@ const negativeTags = arg("negative-tags");
     const props = entry?.properties ?? {};
     const unknown = Object.keys(advancedJson).filter((k) => !(k in props));
     if (unknown.length) die(`--advanced-json 含未登记参数名: ${unknown.join(", ")}\n   ${providerName} 已知参数: ${Object.keys(props).join(", ")}\n   权威清单: reference/endpoint-schemas.json`);
+    for (const [k, v] of Object.entries(advancedJson)) {
+      const def = props[k];
+      if (def?.enum && v != null && !def.enum.includes(v) && !def.enum.includes(String(v))) {
+        die(`参数 ${k}=${JSON.stringify(v)} 不在枚举 ${JSON.stringify(def.enum)} 内`);
+      }
+    }
   }
 const resumeJob = arg("resume");
 if (!resumeJob && !prompt && !lyrics) die("缺 --prompt 或 --lyrics / --lyrics-file（总得告诉它写什么歌）");
